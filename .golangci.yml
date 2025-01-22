@@ -1,0 +1,69 @@
+run:
+    timeout: 5m
+
+    # Allow multiple parallel golangci-lint instances running.
+    # If false (default) - golangci-lint acquires file lock on start.
+    allow-parallel-runners: true
+
+issues:
+    skip-dirs:
+        - test
+
+    exclude-files:
+        - _test.go
+
+linters-settings:
+    errcheck:
+        check-blank: false
+        check-type-assertions: false
+    funlen:
+        lines: 120
+        statements: 60
+    goconst:
+        min-len: 3
+        min-occurrences: 3
+    lll:
+        line-length: 120
+        tab-width: 4
+    misspell:
+        locale: US
+        ignore-words:
+            - importas
+    govet:
+        shadow: true
+        check-unreachable: true
+        check-rangeloops: true
+        check-copylocks: true
+        fieldalignment: true
+        enable:
+            - nilness
+
+linters:
+    disable-all: true
+    enable:
+        - asciicheck
+        - bodyclose
+        - copyloopvar
+        - dupl
+        - errcheck
+        - funlen
+        - goconst
+        - gocyclo
+        - gofmt
+        - goimports
+        - goprintffuncname
+        - gosimple
+        - govet
+        - ineffassign
+        - lll
+        - misspell
+        - nilerr
+        - prealloc
+        - rowserrcheck
+        - staticcheck
+        - stylecheck
+        - typecheck
+        - unconvert
+        - unparam
+        - unused
+        - whitespace
