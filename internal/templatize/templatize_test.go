@@ -40,6 +40,7 @@ func TestTemplateSQL_eq_gt_ge_lt_le(t *testing.T) {
 		"SELECT * FROM users WHERE name ne ? and age ne ? and high ne ? and weight ne ? and level ne ?",
 		template,
 	)
+	as.Equal(5, len(params))
 
 	sql = "select * from tbGMallCfmH5UserDayLottery where  sOpenid = 'owXVa5LsfyqACPIbQpEFPYLRvUNo' and dtCommitTime >=  '2024-11-26 00:00:00' and iStatus = 1"
 	template, params, err = parser.TemplatizeSQL(sql)
@@ -612,10 +613,10 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	as.Equal(0, len(params))
 
 	//
-	sql = `INSERT INTO users 
-    (name, age, high, weight, level, create_time) 
-SELECT name, age, high, weight, level, create_time FROM users WHERE name = 'kyden' 
-ON DUPLICATE KEY UPDATE 
+	sql = `INSERT INTO users
+    (name, age, high, weight, level, create_time)
+SELECT name, age, high, weight, level, create_time FROM users WHERE name = 'kyden'
+ON DUPLICATE KEY UPDATE
     name = VALUES(name), age = VALUES(age), high = VALUES(high), weight = VALUES(weight), level = VALUES(level), create_time = VALUES(create_time)`
 	template, params, err = NewSQLTemplatizer().TemplatizeSQL(sql)
 	as.Nil(err)

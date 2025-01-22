@@ -54,6 +54,11 @@ test:
 	@printf "$(BLUE)Running tests ...$(NC)\n"
 	@$(GOTEST) -v $(PKG_LIST)
 
+coverage:
+	@printf "$(BLUE)Running tests with coverage ...$(NC)\n"
+	@$(GOTEST) -v -coverprofile=coverage.out $(PKG_LIST)
+	@$(GOCOVER) -html=coverage.out -o coverage.html
+
 fumpt:
 	@printf "$(BLUE)Running fumpt ...$(NC)\n"
 	@$(GOFUMPT) -w -l $(shell find . -name '*.go')

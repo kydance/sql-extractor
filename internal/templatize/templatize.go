@@ -52,14 +52,14 @@ func (p *SQLTemplatizer) TemplatizeSQL(sql string) (string, []any, error) {
 	var result strings.Builder
 	var allParams []any
 
-	for i, stmt := range stmts {
-		if i > 0 {
+	for idx := range stmts {
+		if idx > 0 {
 			result.WriteString("; ")
 		}
 
-		templatedSQL, params, err := p.templatizeOneStmt(stmt)
+		templatedSQL, params, err := p.templatizeOneStmt(stmts[idx])
 		if err != nil {
-			return "", nil, fmt.Errorf("error processing statement %d: %w", i+1, err)
+			return "", nil, fmt.Errorf("error processing statement %d: %w", idx+1, err)
 		}
 
 		result.WriteString(templatedSQL)
@@ -107,7 +107,8 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 	}
 
 	switch node := n.(type) {
-	case *ast.ColumnNameExpr: // 1. 基础表达式层 - 最常用的表达式处理
+	// 1. 基础表达式层 - 最常用的表达式处理
+	case *ast.ColumnNameExpr:
 		v.handleColumnNameExpr(node)
 		return nil, true
 	case *test_driver.ValueExpr:
@@ -120,7 +121,8 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 		v.handleTableName(node)
 		return nil, true
 
-	case *ast.SelectStmt: // 2. SQL 语句层
+	// 2. SQL 语句层
+	case *ast.SelectStmt:
 		return v.handleSelectStmt(node)
 	case *ast.InsertStmt:
 		return v.handleInsertStmt(node)
@@ -131,7 +133,8 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 	case *ast.ExplainStmt:
 		return v.handleExplainStmt(node)
 
-	case *ast.TableSource: // 3. 表结构层 - 表引用和连接
+	// 3. 表结构层 - 表引用和连接
+	case *ast.TableSource:
 		v.handleTableSource(node)
 		return nil, true
 	case *ast.Join:
@@ -141,7 +144,8 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 		v.handleOnCondition(node)
 		return nil, true
 
-	case *ast.PatternInExpr: // 4. 条件表达式层 - WHERE/HAVING 子句中的条件
+	// 4. 条件表达式层 - WHERE/HAVING 子句中的条件
+	case *ast.PatternInExpr:
 		v.handlePatternInExpr(node)
 		return nil, true
 	case *ast.PatternLikeOrIlikeExpr:
@@ -157,7 +161,8 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 		v.handleCaseExpr(node)
 		return nil, true
 
-	case *ast.FuncCallExpr: // 5. 函数和聚合层
+	// 5. 函数和聚合层
+	case *ast.FuncCallExpr:
 		v.handleFuncCallExpr(node)
 		return nil, true
 	case *ast.AggregateFuncExpr:
@@ -173,7 +178,8 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 		v.handleTimeUnitExpr(node)
 		return nil, true
 
-	case *ast.ByItem: // 6. 修饰语层 - ORDER BY, LIMIT 等
+	// 6. 修饰语层 - ORDER BY, LIMIT 等
+	case *ast.ByItem:
 		v.handleByItem(node)
 		return nil, true
 	case *ast.Limit:
@@ -186,7 +192,8 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 		v.handleValuesExpr(node)
 		return nil, true
 
-	case *ast.SubqueryExpr: // 7. 子查询层 - 最复杂的查询结构
+	// 7. 子查询层 - 最复杂的查询结构
+	case *ast.SubqueryExpr:
 		v.handleSubqueryExpr(node)
 		return nil, true
 	case *ast.IsNullExpr:
@@ -196,12 +203,13 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 		v.handleExistsSubqueryExpr(node)
 		return nil, true
 
-	case *ast.DefaultExpr: // 8. 处理 DEFAULT 表达式
+	// 8. 处理 DEFAULT 表达式
+	case *ast.DefaultExpr:
 		v.handleDefaultExpr(node)
 		return nil, true
 
 	default:
-		v.logError("unhandled node type", fmt.Sprintf("%T", node))
+		v.logError("unhandled node type: ", fmt.Sprintf("%T", node))
 		return n, true
 	}
 }
@@ -227,31 +235,31 @@ func (v *TemplateVisitor) handleSelectStmt(node *ast.SelectStmt) (ast.Node, bool
 
 	// 处理 SELECT 列表
 	if node.Fields != nil {
-		for idx, field := range node.Fields.Fields {
+		for idx := range node.Fields.Fields {
 			if idx > 0 {
 				v.builder.WriteString(", ")
 			}
 
-			if field.WildCard != nil {
+			if node.Fields.Fields[idx].WildCard != nil {
 				// Schema
-				if field.WildCard.Schema.O != "" {
-					v.builder.WriteString(field.WildCard.Schema.O)
+				if node.Fields.Fields[idx].WildCard.Schema.O != "" {
+					v.builder.WriteString(node.Fields.Fields[idx].WildCard.Schema.O)
 					v.builder.WriteString(".")
 				}
 
-				if field.WildCard.Table.O != "" {
-					v.builder.WriteString(field.WildCard.Table.O)
+				if node.Fields.Fields[idx].WildCard.Table.O != "" {
+					v.builder.WriteString(node.Fields.Fields[idx].WildCard.Table.O)
 					v.builder.WriteString(".")
 				}
 
 				v.builder.WriteString("*")
 			} else {
-				field.Expr.Accept(v)
+				node.Fields.Fields[idx].Expr.Accept(v)
 
 				// 处理 AS
-				if field.AsName.String() != "" {
+				if node.Fields.Fields[idx].AsName.String() != "" {
 					v.builder.WriteString(" AS ")
-					v.builder.WriteString(field.AsName.String())
+					v.builder.WriteString(node.Fields.Fields[idx].AsName.String())
 				}
 			}
 		}
@@ -420,12 +428,12 @@ func (v *TemplateVisitor) handleUpdateStmt(node *ast.UpdateStmt) (ast.Node, bool
 	// ORDER BY
 	if node.Order != nil {
 		v.builder.WriteString(" ORDER BY ")
-		for idx, item := range node.Order.Items {
+		for idx := range node.Order.Items {
 			if idx > 0 {
 				v.builder.WriteString(", ")
 			}
 
-			item.Accept(v)
+			node.Order.Items[idx].Accept(v)
 		}
 	}
 
@@ -446,12 +454,12 @@ func (v *TemplateVisitor) handleDeleteStmt(node *ast.DeleteStmt) (ast.Node, bool
 	v.builder.WriteString("DELETE ")
 
 	if node.Tables != nil {
-		for idx, table := range node.Tables.Tables {
+		for idx := range node.Tables.Tables {
 			if idx > 0 {
 				v.builder.WriteString(", ")
 			}
 
-			table.Accept(v)
+			node.Tables.Tables[idx].Accept(v)
 		}
 		v.builder.WriteString(" ")
 	}
@@ -471,12 +479,12 @@ func (v *TemplateVisitor) handleDeleteStmt(node *ast.DeleteStmt) (ast.Node, bool
 	// ORDER BY
 	if node.Order != nil {
 		v.builder.WriteString(" ORDER BY ")
-		for idx, item := range node.Order.Items {
+		for idx := range node.Order.Items {
 			if idx > 0 {
 				v.builder.WriteString(", ")
 			}
 
-			item.Accept(v)
+			node.Order.Items[idx].Accept(v)
 		}
 	}
 
@@ -613,14 +621,14 @@ func (v *TemplateVisitor) handlePatternInExpr(node *ast.PatternInExpr) {
 	v.builder.WriteString(" IN (")
 
 	if node.List != nil {
-		for idx, val := range node.List {
+		for idx := range node.List {
 			if idx > 0 {
 				v.builder.WriteString(", ")
 			}
 
 			v.builder.WriteString("?")
 			// 如果是 ValueExpr，保存参数值
-			if valExpr, ok := val.(*test_driver.ValueExpr); ok {
+			if valExpr, ok := node.List[idx].(*test_driver.ValueExpr); ok {
 				v.params = append(v.params, valExpr.GetValue())
 			}
 		}
@@ -796,12 +804,12 @@ func (v *TemplateVisitor) handleAggregateFuncExpr(node *ast.AggregateFuncExpr) {
 		v.builder.WriteString("DISTINCT ")
 	}
 
-	for idx, arg := range node.Args {
+	for idx := range node.Args {
 		if idx > 0 {
 			v.builder.WriteString(", ")
 		}
 
-		arg.Accept(v)
+		node.Args[idx].Accept(v)
 	}
 	v.builder.WriteString(")")
 }
@@ -821,11 +829,11 @@ func (v *TemplateVisitor) handleCaseExpr(node *ast.CaseExpr) {
 	}
 
 	// Handle WHEN ... THEN clauses
-	for _, whenClause := range node.WhenClauses {
+	for idx := range node.WhenClauses {
 		v.builder.WriteString(" WHEN ")
-		whenClause.Expr.Accept(v)
+		node.WhenClauses[idx].Expr.Accept(v)
 		v.builder.WriteString(" THEN ")
-		whenClause.Result.Accept(v)
+		node.WhenClauses[idx].Result.Accept(v)
 	}
 
 	// Handle ELSE clause
@@ -849,7 +857,7 @@ func (v *TemplateVisitor) handleFuncCallExpr(node *ast.FuncCallExpr) {
 	v.builder.WriteString(node.FnName.String())
 	v.builder.WriteString("(")
 
-	for i := 0; i < len(node.Args); i++ {
+	for i := range len(node.Args) {
 		if i > 0 {
 			// 检查当前参数是否为时间单位
 			_, isTimeUnit := node.Args[i].(*ast.TimeUnitExpr)
