@@ -17,6 +17,40 @@ func TestTemplateSQL_empty(t *testing.T) {
 	as.Equal(0, len(params))
 }
 
+func TestTemplatizeSQL_Wildcard(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewSQLTemplatizer()
+
+	// *
+	sql := "SELECT * FROM users"
+	template, params, err := parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal("SELECT * FROM users", template)
+	as.Equal(0, len(params))
+
+	// u.*
+	sql = "SELECT u.* FROM users u WHERE name = 'kyden'"
+	template, params, err = parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal("SELECT u.* FROM users AS u WHERE name eq ?", template)
+	as.Equal(1, len(params))
+
+	// schema
+	sql = `SELECT sales.orders.*
+FROM sales.orders
+WHERE customer_id IN (
+    SELECT id 
+    FROM customers 
+    WHERE name LIKE 'A%'
+);`
+
+	template, params, err = parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal("SELECT sales.orders.* FROM sales.orders WHERE customer_id IN ((SELECT id FROM customers WHERE name LIKE ?))", template)
+	as.Equal(1, len(params))
+}
+
 func TestTemplateSQL_eq_gt_ge_lt_le(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
@@ -106,7 +140,7 @@ func TestTemplateSQL_in(t *testing.T) {
 	template, params, err = parser.TemplatizeSQL(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (SELECT id FROM users WHERE create_time BETWEEN ? AND ?)",
+		"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN ((SELECT id FROM users WHERE create_time BETWEEN ? AND ?))",
 		template,
 	)
 	as.Equal(9, len(params))
@@ -116,7 +150,7 @@ func TestTemplateSQL_in(t *testing.T) {
 	template, params, err = parser.TemplatizeSQL(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		"SELECT * FROM users WHERE name eq ? and uuid NOT IN (SELECT uuid FROM users WHERE create_time BETWEEN ? AND ?)",
+		"SELECT * FROM users WHERE name eq ? and uuid NOT IN ((SELECT uuid FROM users WHERE create_time BETWEEN ? AND ?))",
 		template,
 	)
 	as.Equal(3, len(params))
@@ -459,6 +493,32 @@ func TestTemplateSQL_Having(t *testing.T) {
 	as.Nil(err)
 	as.Equal("SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING age gt ? and sum(age) gt ? or max(age) lt ? LIMIT ?, ?", template)
 	as.Equal(15, len(params))
+
+	// Having aggregate functions
+	sql = "SELECT count(*) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age > 18 AND high >= 173 AND weight < 150 and level <= 100 and create_time between '2021-01-01' and '2024-01-02' and id in (1, 2, 3) and name like 'Kyden%' GROUP BY name, age HAVING age > 18 and sum(age) > 100 OR max(age) < 100 LIMIT 10, 20"
+	template, params, err = parser.TemplatizeSQL(sql)
+	as.Nil(err)
+	as.Equal("SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING age gt ? and sum(age) gt ? or max(age) lt ? LIMIT ?, ?", template)
+	as.Equal(15, len(params))
+
+	// Having aggregate functions
+	sql = "SELECT count(*) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age > 18 AND high >= 173 AND weight < 150 and level <= 100 and create_time between '2021-01-01' and '2024-01-02' and id in (1, 2, 3) and name like 'Kyden%' GROUP BY name, age HAVING sum(age) > 100 LIMIT 10, 20"
+	template, params, err = parser.TemplatizeSQL(sql)
+	as.Nil(err)
+	as.Equal("SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? LIMIT ?, ?", template)
+	as.Equal(13, len(params))
+
+	// HAVING aggregate functions
+	sql = `SELECT department, 
+       AVG(salary) as avg_salary, 
+       COUNT(*) as employee_count
+FROM employees
+GROUP BY department
+HAVING AVG(salary) > 50000 AND COUNT(*) > 10`
+	template, params, err = parser.TemplatizeSQL(sql)
+	as.Nil(err)
+	as.Equal("SELECT department, AVG(salary) AS avg_salary, COUNT(1) AS employee_count FROM employees GROUP BY department HAVING AVG(salary) gt ? and COUNT(1) gt ?", template)
+	as.Equal(2, len(params))
 }
 
 func TestTemplateSQL_Join(t *testing.T) {
@@ -532,6 +592,22 @@ func TestTemplateSQL_Join(t *testing.T) {
 		template,
 	)
 	as.Equal(10, len(params))
+}
+
+func TestTemplatizeSQL_SELECT_DISTINCT(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewSQLTemplatizer()
+
+	// SELECT DISTINCT
+	sql := "SELECT DISTINCT name, age FROM users WHERE name = 'Alice' AND age > 18 AND high >= 173 AND weight < 150 and level <= 100 and create_time between '2021-01-01' and '2021-01-02' and id in (1, 2, 3) and name like 'Kyden%' GROUP BY name, age"
+	template, params, err := parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		"SELECT DISTINCT name, age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age",
+		template,
+	)
+	as.Equal(11, len(params))
 }
 
 func TestTemplatizeSQL_Insert(t *testing.T) {
@@ -832,7 +908,7 @@ func TestTemplateSQL_Delete(t *testing.T) {
 	template, params, err = NewSQLTemplatizer().TemplatizeSQL(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		"DELETE FROM users WHERE id IN (SELECT id FROM roles WHERE create_time gt ?)",
+		"DELETE FROM users WHERE id IN ((SELECT id FROM roles WHERE create_time gt ?))",
 		template,
 	)
 	as.Equal(1, len(params))
@@ -939,7 +1015,7 @@ func TestTemplateSQL_Parentheses(t *testing.T) {
 	sql = "SELECT * FROM users WHERE (id IN (SELECT id FROM roles) OR (age > 18))"
 	template, params, err = parser.TemplatizeSQL(sql)
 	as.Equal(nil, err)
-	as.Equal("SELECT * FROM users WHERE (id IN (SELECT id FROM roles) or (age gt ?))", template)
+	as.Equal("SELECT * FROM users WHERE (id IN ((SELECT id FROM roles)) or (age gt ?))", template)
 	as.Equal(1, len(params))
 
 	// 5. 带有计算的括号表达式
@@ -1119,7 +1195,7 @@ func TestTemplateSQL_Exists(t *testing.T) {
 	template, params, err := parser.TemplatizeSQL(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		"SELECT * FROM users WHERE EXISTS (SELECT ? FROM orders WHERE orders.user_id eq users.id)",
+		"SELECT * FROM users WHERE EXISTS ((SELECT ? FROM orders WHERE orders.user_id eq users.id))",
 		template,
 	)
 	as.Equal(1, len(params))
@@ -1129,7 +1205,7 @@ func TestTemplateSQL_Exists(t *testing.T) {
 	template, params, err = parser.TemplatizeSQL(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		"SELECT * FROM users WHERE NOT EXISTS (SELECT ? FROM orders WHERE orders.user_id eq users.id and total gt ?)",
+		"SELECT * FROM users WHERE NOT EXISTS ((SELECT ? FROM orders WHERE orders.user_id eq users.id and total gt ?))",
 		template,
 	)
 	as.Equal(2, len(params))
@@ -1139,7 +1215,7 @@ func TestTemplateSQL_Exists(t *testing.T) {
 	template, params, err = parser.TemplatizeSQL(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		"SELECT * FROM users WHERE age gt ? and EXISTS (SELECT ? FROM orders WHERE orders.user_id eq users.id) and status eq ?",
+		"SELECT * FROM users WHERE age gt ? and EXISTS ((SELECT ? FROM orders WHERE orders.user_id eq users.id)) and status eq ?",
 		template,
 	)
 	as.Equal(3, len(params))
@@ -1380,4 +1456,105 @@ func TestTemplateSQL_MultipleErrors(t *testing.T) {
 	as.NotNil(err)
 	as.Equal("", template)
 	as.Equal(0, len(params))
+}
+
+func TestTemplateSQL_SubqueryCompare(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewSQLTemplatizer()
+
+	// Test subquery with comparison operators
+	sql := "SELECT * FROM users WHERE age > (SELECT AVG(age) FROM users) AND salary >= ANY(SELECT salary FROM managers)"
+	template, params, err := parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		"SELECT * FROM users WHERE age gt (SELECT AVG(age) FROM users) and salary ge ANY((SELECT salary FROM managers))",
+		template,
+	)
+	as.Equal(0, len(params))
+
+	// Test subquery with ALL
+	sql = "SELECT * FROM employees WHERE salary > ALL(SELECT salary FROM interns WHERE department = 'IT')"
+	template, params, err = parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		"SELECT * FROM employees WHERE salary gt ALL((SELECT salary FROM interns WHERE department eq ?))",
+		template,
+	)
+	as.Equal(1, len(params))
+}
+
+func TestTemplateSQL_NestedFunctions(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewSQLTemplatizer()
+
+	// Test nested function calls
+	sql := "SELECT DATE_FORMAT(FROM_UNIXTIME(create_time), '%Y-%m-%d') as date FROM orders"
+	template, params, err := parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		"SELECT DATE_FORMAT(FROM_UNIXTIME(create_time), ?) AS date FROM orders",
+		template,
+	)
+	as.Equal(1, len(params))
+
+	// Test function with subquery
+	sql = "SELECT COALESCE((SELECT name FROM users WHERE id = 1), 'Unknown') as username"
+	template, params, err = parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		"SELECT COALESCE((SELECT name FROM users WHERE id eq ?), ?) AS username",
+		template,
+	)
+	as.Equal(2, len(params))
+}
+
+func TestTemplateSQL_ComplexConditions(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewSQLTemplatizer()
+
+	// Test complex WHERE conditions with multiple operators
+	sql := "SELECT * FROM products WHERE (price BETWEEN 100 AND 200 OR stock > 0) AND (category IN ('electronics', 'books') OR name LIKE '%special%')"
+	template, params, err := parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		"SELECT * FROM products WHERE (price BETWEEN ? AND ? or stock gt ?) and (category IN (?, ?) or name LIKE ?)",
+		template,
+	)
+	as.Equal(6, len(params))
+
+	// Test complex conditions with NULL checks
+	sql = "SELECT * FROM orders WHERE status IS NOT NULL AND (total > 1000 OR customer_id IN (SELECT id FROM vip_customers))"
+	template, params, err = parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		"SELECT * FROM orders WHERE status IS NOT NULL and (total gt ? or customer_id IN ((SELECT id FROM vip_customers)))",
+		template,
+	)
+	as.Equal(1, len(params))
+}
+
+func TestTemplatizeSQL_TimeUnitExpr(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewSQLTemplatizer()
+
+	// Test time unit expression
+	sql := "SELECT * FROM orders WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)"
+	template, params, err := parser.TemplatizeSQL(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		"SELECT * FROM orders WHERE created_at gt DATE_SUB(NOW(), INTERVAL ? DAY)",
+		template,
+	)
+	as.Equal(1, len(params))
+}
+
+func TestTemplateVisitor_logError(t *testing.T) {
+	t.Parallel()
+
+	v := &TemplateVisitor{}
+	v.logError("test")
 }
