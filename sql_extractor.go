@@ -32,8 +32,8 @@ func (e *Extractor) RawSQL() string { return e.rawSQL }
 // SetRawSQL sets the raw SQL.
 func (e *Extractor) SetRawSQL(sql string) { e.rawSQL = sql }
 
-// TemplatizeSQL returns the templatized SQL.
-func (e *Extractor) TemplatizeSQL() string { return e.templatedSQL }
+// TemplatizedSQL returns the templatized SQL.
+func (e *Extractor) TemplatizedSQL() string { return e.templatedSQL }
 
 // Params returns the parameters.
 func (e *Extractor) Params() []any { return e.params }

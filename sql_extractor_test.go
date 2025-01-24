@@ -30,7 +30,7 @@ func TestExtractor_TemplatizeSQL(t *testing.T) {
 	extractor.SetRawSQL(sql)
 	err := extractor.Extract()
 	as.Nil(err)
-	as.Equal("SELECT * FROM users WHERE name eq ?", extractor.TemplatizeSQL())
+	as.Equal("SELECT * FROM users WHERE name eq ?", extractor.TemplatizedSQL())
 }
 
 func TestExtractor_Params(t *testing.T) {
@@ -42,7 +42,7 @@ func TestExtractor_Params(t *testing.T) {
 	extractor := NewExtractor(sql)
 	err := extractor.Extract()
 	as.Nil(err)
-	as.Equal("SELECT * FROM users WHERE name eq ?", extractor.TemplatizeSQL())
+	as.Equal("SELECT * FROM users WHERE name eq ?", extractor.TemplatizedSQL())
 	as.Equal([]any{"kyden"}, extractor.Params())
 
 	// multiple params
@@ -50,7 +50,7 @@ func TestExtractor_Params(t *testing.T) {
 	extractor.SetRawSQL(sql)
 	err = extractor.Extract()
 	as.Nil(err)
-	as.Equal("SELECT * FROM users WHERE name eq ? and age eq ? and active eq ?", extractor.TemplatizeSQL())
+	as.Equal("SELECT * FROM users WHERE name eq ? and age eq ? and active eq ?", extractor.TemplatizedSQL())
 	as.Equal([]any{"kyden", int64(25), int64(1)}, extractor.Params())
 
 	// no params
@@ -58,7 +58,7 @@ func TestExtractor_Params(t *testing.T) {
 	extractor.SetRawSQL(sql)
 	err = extractor.Extract()
 	as.Nil(err)
-	as.Equal("SELECT * FROM users", extractor.TemplatizeSQL())
+	as.Equal("SELECT * FROM users", extractor.TemplatizedSQL())
 	as.Equal(0, len(extractor.Params()))
 }
 
@@ -115,9 +115,12 @@ func TestExtractor_ComplexQueries(t *testing.T) {
 	as.Nil(err)
 	as.Equal(
 		"SELECT u.name, o.order_id FROM users AS u CROSS JOIN orders AS o ON u.id eq o.user_id WHERE u.age gt ? and o.amount gt ?",
-		extractor.TemplatizeSQL(),
+		extractor.TemplatizedSQL(),
 	)
 	as.Equal(2, len(extractor.Params()))
+
+	t.Logf("raw SQL: %s\n Templatized SQL: %s \n TableInfos: %v \n Params: %v",
+		extractor.RawSQL(), extractor.TemplatizedSQL(), extractor.TableInfos(), extractor.Params())
 
 	// group by and having
 	sql = "SELECT department, COUNT(*) as count FROM employees WHERE salary >= 50000 GROUP BY department HAVING count > 5"
@@ -126,7 +129,7 @@ func TestExtractor_ComplexQueries(t *testing.T) {
 	as.Nil(err)
 	as.Equal(
 		"SELECT department, COUNT(1) AS count FROM employees WHERE salary ge ? GROUP BY department HAVING count gt ?",
-		extractor.TemplatizeSQL(),
+		extractor.TemplatizedSQL(),
 	)
 	as.Equal([]any{int64(50000), int64(5)}, extractor.Params())
 }

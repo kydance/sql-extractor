@@ -1717,10 +1717,23 @@ func TestTemplatizeSQL_CrossJoin(t *testing.T) {
 	as := assert.New(t)
 	parser := NewExtractor()
 
+	// CROSS JOIN
 	sql := "SELECT * FROM users CROSS JOIN orders"
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Nil(err)
 	as.Equal("SELECT * FROM users CROSS JOIN orders", template)
+	as.Equal(0, len(params))
+	as.Equal([]*models.TableInfo{
+		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "orders"),
+	}, tableInfos)
+	as.Equal(models.SQLOperationSelect, op)
+
+	// INNER JOIN
+	sql = "SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Nil(err)
+	as.Equal("SELECT * FROM users INNER JOIN orders ON users.id eq orders.user_id", template)
 	as.Equal(0, len(params))
 	as.Equal([]*models.TableInfo{
 		models.NewTableInfo("", "users"),

@@ -225,7 +225,7 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,go
 		// FIXME VariableExpr
 		// FIXME MatchAgainst
 		// FIXME SetCollationExpr
-		v.logError(fmt.Sprintf("%T", node))
+		v.logError(fmt.Sprintf("Enter ast.Node type: %T", node))
 	}
 
 	return n, true
@@ -317,7 +317,7 @@ func (v *ExtractVisitor) handleSelectStmt(node *ast.SelectStmt) {
 			expr.Accept(v)
 
 		default:
-			v.logError(fmt.Sprintf("%T", expr))
+			v.logError(fmt.Sprintf("Having.Expr type: %T", expr))
 			expr.Accept(v)
 		}
 	}
@@ -540,7 +540,7 @@ func (v *ExtractVisitor) handleTableSource(node *ast.TableSource) {
 		src.Accept(v)
 
 	default:
-		v.logError(fmt.Sprintf("%T", src))
+		v.logError(fmt.Sprintf("TableSource.Source type: %T", src))
 		node.Source.Accept(v)
 	}
 
@@ -575,7 +575,7 @@ func (v *ExtractVisitor) handleJoin(node *ast.Join) {
 			left.Accept(v)
 
 		default:
-			v.logError(fmt.Sprintf("%T", left))
+			v.logError(fmt.Sprintf("Join.Left type: %T", left))
 			left.Accept(v)
 		}
 	}
@@ -594,7 +594,7 @@ func (v *ExtractVisitor) handleJoin(node *ast.Join) {
 			right.Accept(v)
 
 		default:
-			fmt.Printf("Join.Right type: %T\n", right)
+			v.logError(fmt.Sprintf("Join.Right type: %T", right))
 			node.Right.Accept(v)
 		}
 

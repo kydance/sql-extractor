@@ -115,6 +115,12 @@ type TableInfo struct {
 - 仅支持 MySQL 语法
 - 不支持存储过程和函数
 - 不处理注释内容
+- TiDB 的 parser 中 `JoinType` 只有 `Cross Join`、`Left Join` 和 `Right Join` 三种类型，而没有 `Inner Join` 和 `Full Outer Join`（或 `Full Join`），这是因为 TiDB 的内部执行计划器会将其他类型的 JOIN 转换为这三种基本类型进行处理:
+
+  - `Inner Join` 在逻辑上等价于在 `Cross Join` 之后添加一个 WHERE 子句来过滤连接条件:
+    `SELECT * FROM t1 INNER JOIN t2 ON t1.a = t2.b;` ==> `SELECT * FROM t1 CROSS JOIN t2 WHERE t1.a = t2.b;`
+  - `Full Outer Join` 可以通过 `Left Join` 和 `Right Join` 的 UNION 操作来实现:
+    `SELECT * FROM t1 FULL OUTER JOIN t2 ON t1.a = t2.b;` ==> `SELECT * FROM t1 LEFT JOIN t2 ON t1.a = t2.b UNION SELECT * FROM t1 RIGHT JOIN t2 ON t1.a = t2.b;`
 
 ## 贡献指南
 
