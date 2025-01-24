@@ -1,15 +1,19 @@
 package sqlextractor
 
 import (
+	"sql-extractor/internal/extract"
 	"sql-extractor/internal/models"
-	"sql-extractor/internal/templatize"
 )
 
+// Extractor is a struct that holds the raw SQL, templatized SQL, operation type,
+// parameters and table information. It is used to extract information from a
+// SQL string.
 type Extractor struct {
-	rawSQL       string // raw SQL which needs to be templatized, extracted and etc.
-	templatedSQL string // templatized SQL
-	params       []any  // parameters
-	tableInfos   []*models.TableInfo
+	rawSQL       string              // raw SQL which needs to be extracted
+	templatedSQL string              // templatized SQL
+	opType       models.SQLOpType    // operation type: SELECT, INSERT, UPDATE, DELETE
+	params       []any               // parameters: where conditions, order by, limit, offset
+	tableInfos   []*models.TableInfo // table infos: Schema, Tablename
 }
 
 // NewExtractor creates a new Extractor. It requires a raw SQL string.
@@ -37,8 +41,8 @@ func (e *Extractor) Params() []any { return e.params }
 // TableInfos returns the table infos.
 func (e *Extractor) TableInfos() []*models.TableInfo { return e.tableInfos }
 
-// Extract templatizes the raw SQL. It supports multiple SQL statements separated by semicolons.
-// It returns an error if the SQL is invalid.
+// Extract extracts information from the raw SQL string. It extracts the templatized
+// SQL, parameters, table information, and operation type.
 //
 // Example:
 //
@@ -49,7 +53,7 @@ func (e *Extractor) TableInfos() []*models.TableInfo { return e.tableInfos }
 //	}
 //	fmt.Println(extractor.TemplatizeSQL())
 func (e *Extractor) Extract() (err error) {
-	e.templatedSQL, e.tableInfos, e.params, err = templatize.NewSQLTemplatizer().TemplatizeSQL(e.rawSQL)
+	e.templatedSQL, e.tableInfos, e.params, e.opType, err = extract.NewExtractor().Extract(e.rawSQL)
 	if err != nil {
 		return err
 	}

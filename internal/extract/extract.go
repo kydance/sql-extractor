@@ -1,4 +1,4 @@
-package templatize
+package extract
 
 import (
 	"fmt"
@@ -16,41 +16,42 @@ import (
 
 const paramsMaxCount = 64
 
-type SQLTemplatizer struct {
+type Extractor struct {
 	parser *parser.Parser
 
 	pool sync.Pool
 }
 
-func NewSQLTemplatizer() *SQLTemplatizer {
-	return &SQLTemplatizer{
+func NewExtractor() *Extractor {
+	return &Extractor{
 		parser: parser.New(),
 		pool: sync.Pool{
 			New: func() any {
-				return &TemplateVisitor{
+				return &ExtractVisitor{
 					builder:    &strings.Builder{},
 					params:     make([]any, 0, paramsMaxCount),
 					tableInfos: make([]*models.TableInfo, 0, paramsMaxCount),
+					opType:     models.SQLOperationUnknown,
 				}
 			},
 		},
 	}
 }
 
-// TemplatizeSQL returns the templatized SQL and the parameters.
+// Extract returns the templatized SQL, table info, parameters and operation type.
 // It supports multiple SQL statements separated by semicolons.
-func (p *SQLTemplatizer) TemplatizeSQL(sql string) (string, []*models.TableInfo, []any, error) {
+func (p *Extractor) Extract(sql string) (string, []*models.TableInfo, []any, models.SQLOpType, error) {
 	if sql == "" {
-		return "", nil, nil, fmt.Errorf("empty SQL statement")
+		return "", nil, nil, models.SQLOperationUnknown, fmt.Errorf("empty SQL statement")
 	}
 
 	stmts, _, err := p.parser.Parse(sql, "", "")
 	if err != nil {
-		return "", nil, nil, err
+		return "", nil, nil, models.SQLOperationUnknown, err
 	}
 
 	if len(stmts) == 0 {
-		return "", nil, nil, fmt.Errorf("no valid SQL statements found")
+		return "", nil, nil, models.SQLOperationUnknown, fmt.Errorf("no valid SQL statements found")
 	}
 
 	// Handle multiple statements
@@ -58,6 +59,7 @@ func (p *SQLTemplatizer) TemplatizeSQL(sql string) (string, []*models.TableInfo,
 		result        strings.Builder
 		allParams     []any
 		allTableInfos []*models.TableInfo
+		opType        models.SQLOpType
 	)
 
 	for idx := range stmts {
@@ -65,27 +67,33 @@ func (p *SQLTemplatizer) TemplatizeSQL(sql string) (string, []*models.TableInfo,
 			result.WriteString("; ")
 		}
 
-		templatedSQL, tableInfos, params, err := p.templatizeOneStmt(stmts[idx])
+		templatedSQL, tableInfos, params, op, err := p.extractOneStmt(stmts[idx])
 		if err != nil {
-			return "", nil, nil, fmt.Errorf("error processing statement %d: %w", idx+1, err)
+			return "", nil, nil, models.SQLOperationUnknown, fmt.Errorf("error processing statement %d: %w", idx+1, err)
 		}
 
 		result.WriteString(templatedSQL)
 		allParams = append(allParams, params...)
 		allTableInfos = append(allTableInfos, tableInfos...)
+
+		// For multiple statements, we'll return the operation type of the first statement
+		if idx == 0 {
+			opType = op
+		}
 	}
 
-	return result.String(), allTableInfos, allParams, nil
+	return result.String(), allTableInfos, allParams, opType, nil
 }
 
-// templatizeOneStmt handles a single SQL statement
-func (p *SQLTemplatizer) templatizeOneStmt(stmt ast.StmtNode) (string, []*models.TableInfo, []any, error) {
-	v := p.pool.Get().(*TemplateVisitor)
+// extractOneStmt handles a single SQL statement
+func (p *Extractor) extractOneStmt(stmt ast.StmtNode) (string, []*models.TableInfo, []any, models.SQLOpType, error) {
+	v := p.pool.Get().(*ExtractVisitor)
 	defer func() {
 		v.builder.Reset()
 		v.params = v.params[:0]
 		v.tableInfos = v.tableInfos[:0]
 		v.inAggrFunc = false
+		v.opType = models.SQLOperationUnknown
 
 		p.pool.Put(v)
 	}()
@@ -101,15 +109,17 @@ func (p *SQLTemplatizer) templatizeOneStmt(stmt ast.StmtNode) (string, []*models
 			return t.Schema() + "." + t.TableName()
 		}),
 		v.params,
+		v.opType,
 		nil
 }
 
-// TemplateVisitor 实现 ast.Visitor 接口
-type TemplateVisitor struct {
+// ExtractVisitor 实现 ast.Visitor 接口
+type ExtractVisitor struct {
 	builder    *strings.Builder
 	params     []any
-	inAggrFunc bool // 是否在聚合函数中
+	inAggrFunc bool
 	tableInfos []*models.TableInfo
+	opType     models.SQLOpType
 }
 
 // 避免重复字符串操作
@@ -122,7 +132,7 @@ var joinTypeMap = map[ast.JoinType]string{
 // Enter implement ast.Visitor interface. It handles ast.Node
 //
 // Return: nil, true - 不继续遍历， n, false - 继续遍历
-func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,gocyclo
+func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,gocyclo
 	if n == nil {
 		return n, false
 	}
@@ -223,12 +233,16 @@ func (v *TemplateVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,g
 
 // Leave 实现 ast.Visitor 接口.
 // Return: n, true - 不继续遍历
-func (v *TemplateVisitor) Leave(n ast.Node) (ast.Node, bool) {
+func (v *ExtractVisitor) Leave(n ast.Node) (ast.Node, bool) {
 	return n, true
 }
 
 // SELECT 子句: SELECT 列表、FROM 子句、WHERE 子句、GROUP BY 子句、HAVING 子句、ORDER BY 子句、LIMIT 子句
-func (v *TemplateVisitor) handleSelectStmt(node *ast.SelectStmt) {
+func (v *ExtractVisitor) handleSelectStmt(node *ast.SelectStmt) {
+	if v.opType == models.SQLOperationUnknown {
+		v.opType = models.SQLOperationSelect
+	}
+
 	v.builder.WriteString("SELECT ")
 
 	// DISTINCT 关键字
@@ -327,7 +341,11 @@ func (v *TemplateVisitor) handleSelectStmt(node *ast.SelectStmt) {
 }
 
 // INSERT 语句
-func (v *TemplateVisitor) handleInsertStmt(node *ast.InsertStmt) {
+func (v *ExtractVisitor) handleInsertStmt(node *ast.InsertStmt) {
+	if v.opType == models.SQLOperationUnknown {
+		v.opType = models.SQLOperationInsert
+	}
+
 	v.builder.WriteString("INSERT ")
 	// INSERT IGNORE
 	if node.IgnoreErr {
@@ -391,7 +409,11 @@ func (v *TemplateVisitor) handleInsertStmt(node *ast.InsertStmt) {
 }
 
 // UPDATE
-func (v *TemplateVisitor) handleUpdateStmt(node *ast.UpdateStmt) {
+func (v *ExtractVisitor) handleUpdateStmt(node *ast.UpdateStmt) {
+	if v.opType == models.SQLOperationUnknown {
+		v.opType = models.SQLOperationUpdate
+	}
+
 	v.builder.WriteString("UPDATE ")
 
 	if node.TableRefs != nil && node.TableRefs.TableRefs != nil {
@@ -433,7 +455,11 @@ func (v *TemplateVisitor) handleUpdateStmt(node *ast.UpdateStmt) {
 }
 
 // DELETE
-func (v *TemplateVisitor) handleDeleteStmt(node *ast.DeleteStmt) {
+func (v *ExtractVisitor) handleDeleteStmt(node *ast.DeleteStmt) {
+	if v.opType == models.SQLOperationUnknown {
+		v.opType = models.SQLOperationDelete
+	}
+
 	v.builder.WriteString("DELETE ")
 
 	if node.Tables != nil {
@@ -478,7 +504,11 @@ func (v *TemplateVisitor) handleDeleteStmt(node *ast.DeleteStmt) {
 }
 
 // handleExplainStmt 处理 EXPLAIN 语句
-func (v *TemplateVisitor) handleExplainStmt(node *ast.ExplainStmt) {
+func (v *ExtractVisitor) handleExplainStmt(node *ast.ExplainStmt) {
+	if v.opType == models.SQLOperationUnknown {
+		v.opType = models.SQLOperationExplain
+	}
+
 	v.builder.WriteString("EXPLAIN ")
 	if node.Analyze {
 		v.builder.WriteString("ANALYZE ")
@@ -496,7 +526,7 @@ func (v *TemplateVisitor) handleExplainStmt(node *ast.ExplainStmt) {
 }
 
 // handleTableSource 处理表源
-func (v *TemplateVisitor) handleTableSource(node *ast.TableSource) {
+func (v *ExtractVisitor) handleTableSource(node *ast.TableSource) {
 	switch src := node.Source.(type) {
 	case *ast.TableName:
 		src.Accept(v)
@@ -520,7 +550,7 @@ func (v *TemplateVisitor) handleTableSource(node *ast.TableSource) {
 	}
 }
 
-func (v *TemplateVisitor) handleTableName(node *ast.TableName) {
+func (v *ExtractVisitor) handleTableName(node *ast.TableName) {
 	v.tableInfos = append(v.tableInfos, models.NewTableInfo())
 
 	if node.Schema.O != "" {
@@ -534,7 +564,7 @@ func (v *TemplateVisitor) handleTableName(node *ast.TableName) {
 	v.tableInfos[len(v.tableInfos)-1].SetTableName(node.Name.O)
 }
 
-func (v *TemplateVisitor) handleJoin(node *ast.Join) {
+func (v *ExtractVisitor) handleJoin(node *ast.Join) {
 	if node.Left != nil {
 		switch left := node.Left.(type) {
 		// 若左节点是 JOIN，递归处理
@@ -576,7 +606,7 @@ func (v *TemplateVisitor) handleJoin(node *ast.Join) {
 	}
 }
 
-func (v *TemplateVisitor) handlePatternLikeOrIlikeExpr(node *ast.PatternLikeOrIlikeExpr) {
+func (v *ExtractVisitor) handlePatternLikeOrIlikeExpr(node *ast.PatternLikeOrIlikeExpr) {
 	node.Expr.Accept(v)
 	if node.Not {
 		v.builder.WriteString(" NOT")
@@ -599,7 +629,7 @@ func (v *TemplateVisitor) handlePatternLikeOrIlikeExpr(node *ast.PatternLikeOrIl
 	// }
 }
 
-func (v *TemplateVisitor) handlePatternInExpr(node *ast.PatternInExpr) {
+func (v *ExtractVisitor) handlePatternInExpr(node *ast.PatternInExpr) {
 	node.Expr.Accept(v)
 	if node.Not {
 		v.builder.WriteString(" NOT")
@@ -627,13 +657,13 @@ func (v *TemplateVisitor) handlePatternInExpr(node *ast.PatternInExpr) {
 	v.builder.WriteString(")")
 }
 
-func (v *TemplateVisitor) handleBinaryOperationExpr(node *ast.BinaryOperationExpr) {
+func (v *ExtractVisitor) handleBinaryOperationExpr(node *ast.BinaryOperationExpr) {
 	node.L.Accept(v)
 	v.builder.WriteString(fmt.Sprintf(" %s ", node.Op.String()))
 	node.R.Accept(v)
 }
 
-func (v *TemplateVisitor) handleBetweenExpr(node *ast.BetweenExpr) {
+func (v *ExtractVisitor) handleBetweenExpr(node *ast.BetweenExpr) {
 	node.Expr.Accept(v)
 
 	if node.Not {
@@ -646,7 +676,7 @@ func (v *TemplateVisitor) handleBetweenExpr(node *ast.BetweenExpr) {
 	node.Right.Accept(v)
 }
 
-func (v *TemplateVisitor) handleValueExpr(node *test_driver.ValueExpr) {
+func (v *ExtractVisitor) handleValueExpr(node *test_driver.ValueExpr) {
 	if v.inAggrFunc { // 在聚合函数中，直接输出值
 		switch val := node.GetValue().(type) {
 		case int64, uint64:
@@ -672,7 +702,7 @@ func (v *TemplateVisitor) handleValueExpr(node *test_driver.ValueExpr) {
 	}
 }
 
-func (v *TemplateVisitor) handleColumnNameExpr(node *ast.ColumnNameExpr) {
+func (v *ExtractVisitor) handleColumnNameExpr(node *ast.ColumnNameExpr) {
 	var schema, table string
 	if node.Name.Schema.O != "" {
 		schema = node.Name.Schema.O + "."
@@ -685,7 +715,7 @@ func (v *TemplateVisitor) handleColumnNameExpr(node *ast.ColumnNameExpr) {
 	v.builder.WriteString(schema + table + node.Name.Name.O)
 }
 
-func (v *TemplateVisitor) handleByItem(node *ast.ByItem) {
+func (v *ExtractVisitor) handleByItem(node *ast.ByItem) {
 	node.Expr.Accept(v)
 
 	// 处理排序方向
@@ -696,14 +726,14 @@ func (v *TemplateVisitor) handleByItem(node *ast.ByItem) {
 	// FIXME 处理 NULL 排序
 }
 
-func (v *TemplateVisitor) handleValuesExpr(node *ast.ValuesExpr) {
+func (v *ExtractVisitor) handleValuesExpr(node *ast.ValuesExpr) {
 	v.builder.WriteString("VALUES(")
 	node.Column.Accept(v)
 	// node.Accept(v)
 	v.builder.WriteString(")")
 }
 
-func (v *TemplateVisitor) handleLimit(node *ast.Limit) {
+func (v *ExtractVisitor) handleLimit(node *ast.Limit) {
 	v.builder.WriteString(" LIMIT ")
 
 	if node.Offset != nil {
@@ -714,25 +744,25 @@ func (v *TemplateVisitor) handleLimit(node *ast.Limit) {
 	node.Count.Accept(v)
 }
 
-func (v *TemplateVisitor) handleSubqueryExpr(node *ast.SubqueryExpr) {
+func (v *ExtractVisitor) handleSubqueryExpr(node *ast.SubqueryExpr) {
 	v.builder.WriteString("(")
 	node.Query.Accept(v)
 	v.builder.WriteString(")")
 }
 
-func (v *TemplateVisitor) handleOnCondition(node *ast.OnCondition) {
+func (v *ExtractVisitor) handleOnCondition(node *ast.OnCondition) {
 	node.Expr.Accept(v)
 }
 
 // handleAssignment 处理赋值表达式
-func (v *TemplateVisitor) handleAssignment(node *ast.Assignment) {
+func (v *ExtractVisitor) handleAssignment(node *ast.Assignment) {
 	v.handleColumnNameExpr(&ast.ColumnNameExpr{Name: node.Column}) // XXX
 	v.builder.WriteString(" eq ")
 	node.Expr.Accept(v)
 }
 
 // handleExprNode 处理表达式节点
-func (v *TemplateVisitor) handleAggregateFuncExpr(node *ast.AggregateFuncExpr) {
+func (v *ExtractVisitor) handleAggregateFuncExpr(node *ast.AggregateFuncExpr) {
 	v.builder.WriteString(node.F)
 	v.builder.WriteString("(")
 
@@ -751,7 +781,7 @@ func (v *TemplateVisitor) handleAggregateFuncExpr(node *ast.AggregateFuncExpr) {
 }
 
 // handleCaseExpr 处理 CASE 表达式
-func (v *TemplateVisitor) handleCaseExpr(node *ast.CaseExpr) {
+func (v *ExtractVisitor) handleCaseExpr(node *ast.CaseExpr) {
 	if node == nil {
 		return
 	}
@@ -782,14 +812,14 @@ func (v *TemplateVisitor) handleCaseExpr(node *ast.CaseExpr) {
 }
 
 // handleParenthesesExpr 处理括号表达式
-func (v *TemplateVisitor) handleParenthesesExpr(node *ast.ParenthesesExpr) {
+func (v *ExtractVisitor) handleParenthesesExpr(node *ast.ParenthesesExpr) {
 	v.builder.WriteString("(")
 	node.Expr.Accept(v)
 	v.builder.WriteString(")")
 }
 
 // handleFuncCallExpr 处理函数调用表达式
-func (v *TemplateVisitor) handleFuncCallExpr(node *ast.FuncCallExpr) {
+func (v *ExtractVisitor) handleFuncCallExpr(node *ast.FuncCallExpr) {
 	v.builder.WriteString(node.FnName.String())
 	v.builder.WriteString("(")
 
@@ -843,14 +873,14 @@ func (v *TemplateVisitor) handleFuncCallExpr(node *ast.FuncCallExpr) {
 }
 
 // handleUnaryOperationExpr 处理一元操作表达式
-func (v *TemplateVisitor) handleUnaryOperationExpr(node *ast.UnaryOperationExpr) {
+func (v *ExtractVisitor) handleUnaryOperationExpr(node *ast.UnaryOperationExpr) {
 	v.builder.WriteString(node.Op.String())
 	v.builder.WriteString(" ")
 	node.V.Accept(v)
 }
 
 // handleIsNullExpr 处理 IS NULL 和 IS NOT NULL 表达式
-func (v *TemplateVisitor) handleIsNullExpr(node *ast.IsNullExpr) {
+func (v *ExtractVisitor) handleIsNullExpr(node *ast.IsNullExpr) {
 	node.Expr.Accept(v)
 	if node.Not {
 		v.builder.WriteString(" IS NOT NULL")
@@ -860,7 +890,7 @@ func (v *TemplateVisitor) handleIsNullExpr(node *ast.IsNullExpr) {
 }
 
 // handleExistsSubqueryExpr 处理 EXISTS 和 NOT EXISTS 表达式
-func (v *TemplateVisitor) handleExistsSubqueryExpr(node *ast.ExistsSubqueryExpr) {
+func (v *ExtractVisitor) handleExistsSubqueryExpr(node *ast.ExistsSubqueryExpr) {
 	if node.Not {
 		v.builder.WriteString("NOT ")
 	}
@@ -871,7 +901,7 @@ func (v *TemplateVisitor) handleExistsSubqueryExpr(node *ast.ExistsSubqueryExpr)
 }
 
 // handleDefaultExpr 处理 DEFAULT 表达式
-func (v *TemplateVisitor) handleDefaultExpr(node *ast.DefaultExpr) {
+func (v *ExtractVisitor) handleDefaultExpr(node *ast.DefaultExpr) {
 	v.builder.WriteString("DEFAULT")
 	if node.Name != nil {
 		v.builder.WriteString(" ")
@@ -880,14 +910,14 @@ func (v *TemplateVisitor) handleDefaultExpr(node *ast.DefaultExpr) {
 }
 
 // handleTimeUnitExpr 处理时间单位表达式
-func (v *TemplateVisitor) handleTimeUnitExpr(node *ast.TimeUnitExpr) {
+func (v *ExtractVisitor) handleTimeUnitExpr(node *ast.TimeUnitExpr) {
 	// 不要在这里写入任何内容，因为参数占位符和 INTERVAL 关键字
 	// 会在父节点（如 FuncCallExpr）中处理
 }
 
 // handleCompareSubqueryExpr 处理带有比较运算符的子查询表达式
 // 例如: age > ALL(SELECT age FROM users)
-func (v *TemplateVisitor) handleCompareSubqueryExpr(node *ast.CompareSubqueryExpr) {
+func (v *ExtractVisitor) handleCompareSubqueryExpr(node *ast.CompareSubqueryExpr) {
 	node.L.Accept(v)
 
 	v.builder.WriteByte(' ')
@@ -907,7 +937,7 @@ func (v *TemplateVisitor) handleCompareSubqueryExpr(node *ast.CompareSubqueryExp
 }
 
 // FIXME logError logs unhandled node type errors during SQL templatization
-func (v *TemplateVisitor) logError(details string) {
+func (v *ExtractVisitor) logError(details string) {
 	msg := fmt.Sprintf("[SQL Templatize Error] unhandled node type: %s", details)
 	fmt.Println(msg)
 }

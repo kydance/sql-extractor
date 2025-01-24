@@ -75,7 +75,7 @@ tidy:
 clean:
 	@printf "$(BLUE)Cleaning up ...$(NC)\n"
 	@$(GOCLEAN)
-	@rm -rf $(BIN_DIR) *.pid *.perf
+	@rm -rf $(BIN_DIR) *.pid *.perf coverage.html coverage.out
 
 help:
 	@echo "Available targets:"

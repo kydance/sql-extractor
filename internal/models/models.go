@@ -1,5 +1,17 @@
 package models
 
+// SQLOpType represents the type of SQL operation
+type SQLOpType string
+
+const (
+	SQLOperationUnknown SQLOpType = "UNKNOWN"
+	SQLOperationSelect  SQLOpType = "SELECT"
+	SQLOperationInsert  SQLOpType = "INSERT"
+	SQLOperationUpdate  SQLOpType = "UPDATE"
+	SQLOperationDelete  SQLOpType = "DELETE"
+	SQLOperationExplain SQLOpType = "EXPLAIN"
+)
+
 type TableInfo struct {
 	schema    string // database
 	tableName string // table name

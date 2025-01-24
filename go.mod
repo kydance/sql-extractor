@@ -3,8 +3,8 @@ module sql-extractor
 go 1.23.4
 
 require (
-	github.com/kydance/ziwi v0.0.0-20250123111652-b38db3ab0dc6
-	github.com/pingcap/tidb/pkg/parser v0.0.0-20241219061630-1fa29556ab96
+	github.com/kydance/ziwi v0.1.0
+	github.com/pingcap/tidb/pkg/parser v0.0.0-20250124030638-4636702cd590
 	github.com/stretchr/testify v1.10.0
 )
 
@@ -17,8 +17,8 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
