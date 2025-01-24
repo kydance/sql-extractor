@@ -3,106 +3,130 @@ package sqlextractor
 import (
 	"testing"
 
+	"sql-extractor/internal/models"
+
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtracter_RawSQL(t *testing.T) {
+func TestExtractor_RawSQL(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
-	extracter := NewExtracter("")
+	extractor := NewExtractor("")
 
 	sql := "SELECT * FROM users WHERE name = 'kyden'"
-	extracter.SetRawSQL(sql)
-	err := extracter.Extract()
+	extractor.SetRawSQL(sql)
+	err := extractor.Extract()
 	as.Nil(err)
-	as.Equal(sql, extracter.RawSQL())
+	as.Equal(sql, extractor.RawSQL())
 }
 
-func TestExtracter_TemplatizeSQL(t *testing.T) {
+func TestExtractor_TemplatizeSQL(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
-	extracter := NewExtracter("")
+	extractor := NewExtractor("")
 
 	// single string param
 	sql := "SELECT * FROM users WHERE name = 'kyden'"
-	extracter.SetRawSQL(sql)
-	err := extracter.Extract()
+	extractor.SetRawSQL(sql)
+	err := extractor.Extract()
 	as.Nil(err)
-	as.Equal("SELECT * FROM users WHERE name eq ?", extracter.TemplatizeSQL())
+	as.Equal("SELECT * FROM users WHERE name eq ?", extractor.TemplatizeSQL())
 }
 
-func TestExtracter_Params(t *testing.T) {
+func TestExtractor_Params(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
 
 	// single string param
 	sql := "SELECT * FROM users WHERE name = 'kyden'"
-	extracter := NewExtracter(sql)
-	err := extracter.Extract()
+	extractor := NewExtractor(sql)
+	err := extractor.Extract()
 	as.Nil(err)
-	as.Equal("SELECT * FROM users WHERE name eq ?", extracter.TemplatizeSQL())
-	as.Equal([]any{"kyden"}, extracter.Params())
+	as.Equal("SELECT * FROM users WHERE name eq ?", extractor.TemplatizeSQL())
+	as.Equal([]any{"kyden"}, extractor.Params())
 
 	// multiple params
 	sql = "SELECT * FROM users WHERE name = 'kyden' AND age = 25 AND active = true"
-	extracter.SetRawSQL(sql)
-	err = extracter.Extract()
+	extractor.SetRawSQL(sql)
+	err = extractor.Extract()
 	as.Nil(err)
-	as.Equal("SELECT * FROM users WHERE name eq ? and age eq ? and active eq ?", extracter.TemplatizeSQL())
-	as.Equal([]any{"kyden", int64(25), int64(1)}, extracter.Params())
+	as.Equal("SELECT * FROM users WHERE name eq ? and age eq ? and active eq ?", extractor.TemplatizeSQL())
+	as.Equal([]any{"kyden", int64(25), int64(1)}, extractor.Params())
 
 	// no params
 	sql = "SELECT * FROM users"
-	extracter.SetRawSQL(sql)
-	err = extracter.Extract()
+	extractor.SetRawSQL(sql)
+	err = extractor.Extract()
 	as.Nil(err)
-	as.Equal("SELECT * FROM users", extracter.TemplatizeSQL())
-	as.Equal(0, len(extracter.Params()))
+	as.Equal("SELECT * FROM users", extractor.TemplatizeSQL())
+	as.Equal(0, len(extractor.Params()))
 }
 
-func TestExtracter_Extract_Error(t *testing.T) {
+func TestExtractor_TableInfos(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
-	extracter := NewExtracter("")
+
+	// single table
+	sql := "SELECT * FROM users WHERE name = 'kyden'"
+	extractor := NewExtractor(sql)
+	err := extractor.Extract()
+	as.Nil(err)
+	as.Equal([]*models.TableInfo{models.NewTableInfo("", "users")}, extractor.TableInfos())
+
+	// multiple tables
+	sql = "SELECT * FROM users u JOIN orders o ON u.id = o.user_id WHERE u.name = 'kyden'"
+	extractor.SetRawSQL(sql)
+	err = extractor.Extract()
+	as.Nil(err)
+	as.Equal([]*models.TableInfo{
+		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "orders"),
+	}, extractor.TableInfos())
+}
+
+func TestExtractor_Extract_Error(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	extractor := NewExtractor("")
 
 	// invalid SQL syntax
 	sql := "SELECT * FROM WHERE name = 'kyden'"
-	extracter.SetRawSQL(sql)
-	err := extracter.Extract()
+	extractor.SetRawSQL(sql)
+	err := extractor.Extract()
 	as.Error(err)
 
 	// empty SQL
 	sql = ""
-	extracter.SetRawSQL(sql)
-	err = extracter.Extract()
+	extractor.SetRawSQL(sql)
+	err = extractor.Extract()
 	as.Error(err)
 	as.Equal("empty SQL statement", err.Error())
 }
 
-func TestExtracter_ComplexQueries(t *testing.T) {
+func TestExtractor_ComplexQueries(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
-	extracter := NewExtracter("")
+	extractor := NewExtractor("")
 
 	// Join with conditions
 	sql := "SELECT u.name, o.order_id FROM users u JOIN orders o ON u.id = o.user_id WHERE u.age > 18 AND o.amount > 100.50"
-	extracter.SetRawSQL(sql)
-	err := extracter.Extract()
+	extractor.SetRawSQL(sql)
+	err := extractor.Extract()
 	as.Nil(err)
 	as.Equal(
 		"SELECT u.name, o.order_id FROM users AS u CROSS JOIN orders AS o ON u.id eq o.user_id WHERE u.age gt ? and o.amount gt ?",
-		extracter.TemplatizeSQL(),
+		extractor.TemplatizeSQL(),
 	)
-	as.Equal(2, len(extracter.Params()))
+	as.Equal(2, len(extractor.Params()))
 
 	// group by and having
 	sql = "SELECT department, COUNT(*) as count FROM employees WHERE salary >= 50000 GROUP BY department HAVING count > 5"
-	extracter.SetRawSQL(sql)
-	err = extracter.Extract()
+	extractor.SetRawSQL(sql)
+	err = extractor.Extract()
 	as.Nil(err)
 	as.Equal(
 		"SELECT department, COUNT(1) AS count FROM employees WHERE salary ge ? GROUP BY department HAVING count gt ?",
-		extracter.TemplatizeSQL(),
+		extractor.TemplatizeSQL(),
 	)
-	as.Equal([]any{int64(50000), int64(5)}, extracter.Params())
+	as.Equal([]any{int64(50000), int64(5)}, extractor.Params())
 }

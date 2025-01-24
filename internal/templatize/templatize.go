@@ -5,6 +5,10 @@ import (
 	"strings"
 	"sync"
 
+	"sql-extractor/internal/models"
+
+	"github.com/kydance/ziwi/slices"
+
 	"github.com/pingcap/tidb/pkg/parser"
 	"github.com/pingcap/tidb/pkg/parser/ast"
 	"github.com/pingcap/tidb/pkg/parser/test_driver"
@@ -24,8 +28,9 @@ func NewSQLTemplatizer() *SQLTemplatizer {
 		pool: sync.Pool{
 			New: func() any {
 				return &TemplateVisitor{
-					builder: &strings.Builder{},
-					params:  make([]any, 0, paramsMaxCount),
+					builder:    &strings.Builder{},
+					params:     make([]any, 0, paramsMaxCount),
+					tableInfos: make([]*models.TableInfo, 0, paramsMaxCount),
 				}
 			},
 		},
@@ -34,24 +39,25 @@ func NewSQLTemplatizer() *SQLTemplatizer {
 
 // TemplatizeSQL returns the templatized SQL and the parameters.
 // It supports multiple SQL statements separated by semicolons.
-func (p *SQLTemplatizer) TemplatizeSQL(sql string) (string, []any, error) {
+func (p *SQLTemplatizer) TemplatizeSQL(sql string) (string, []*models.TableInfo, []any, error) {
 	if sql == "" {
-		return "", nil, fmt.Errorf("empty SQL statement")
+		return "", nil, nil, fmt.Errorf("empty SQL statement")
 	}
 
 	stmts, _, err := p.parser.Parse(sql, "", "")
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	if len(stmts) == 0 {
-		return "", nil, fmt.Errorf("no valid SQL statements found")
+		return "", nil, nil, fmt.Errorf("no valid SQL statements found")
 	}
 
 	// Handle multiple statements
 	var (
-		result    strings.Builder
-		allParams []any
+		result        strings.Builder
+		allParams     []any
+		allTableInfos []*models.TableInfo
 	)
 
 	for idx := range stmts {
@@ -59,31 +65,43 @@ func (p *SQLTemplatizer) TemplatizeSQL(sql string) (string, []any, error) {
 			result.WriteString("; ")
 		}
 
-		templatedSQL, params, err := p.templatizeOneStmt(stmts[idx])
+		templatedSQL, tableInfos, params, err := p.templatizeOneStmt(stmts[idx])
 		if err != nil {
-			return "", nil, fmt.Errorf("error processing statement %d: %w", idx+1, err)
+			return "", nil, nil, fmt.Errorf("error processing statement %d: %w", idx+1, err)
 		}
 
 		result.WriteString(templatedSQL)
 		allParams = append(allParams, params...)
+		allTableInfos = append(allTableInfos, tableInfos...)
 	}
 
-	return result.String(), allParams, nil
+	return result.String(), allTableInfos, allParams, nil
 }
 
 // templatizeOneStmt handles a single SQL statement
-func (p *SQLTemplatizer) templatizeOneStmt(stmt ast.StmtNode) (string, []any, error) {
+func (p *SQLTemplatizer) templatizeOneStmt(stmt ast.StmtNode) (string, []*models.TableInfo, []any, error) {
 	v := p.pool.Get().(*TemplateVisitor)
 	defer func() {
 		v.builder.Reset()
 		v.params = v.params[:0]
+		v.tableInfos = v.tableInfos[:0]
 		v.inAggrFunc = false
 
 		p.pool.Put(v)
 	}()
 
 	stmt.Accept(v)
-	return v.builder.String(), v.params, nil
+
+	return v.builder.String(),
+		slices.UniqBy(v.tableInfos, func(t *models.TableInfo) string {
+			if t.Schema() == "" {
+				return t.TableName()
+			}
+
+			return t.Schema() + "." + t.TableName()
+		}),
+		v.params,
+		nil
 }
 
 // TemplateVisitor 实现 ast.Visitor 接口
@@ -91,6 +109,7 @@ type TemplateVisitor struct {
 	builder    *strings.Builder
 	params     []any
 	inAggrFunc bool // 是否在聚合函数中
+	tableInfos []*models.TableInfo
 }
 
 // 避免重复字符串操作
@@ -502,11 +521,17 @@ func (v *TemplateVisitor) handleTableSource(node *ast.TableSource) {
 }
 
 func (v *TemplateVisitor) handleTableName(node *ast.TableName) {
+	v.tableInfos = append(v.tableInfos, models.NewTableInfo())
+
 	if node.Schema.O != "" {
 		v.builder.WriteString(node.Schema.O)
 		v.builder.WriteString(".")
+
+		v.tableInfos[len(v.tableInfos)-1].SetSchema(node.Schema.O)
 	}
+
 	v.builder.WriteString(node.Name.O)
+	v.tableInfos[len(v.tableInfos)-1].SetTableName(node.Name.O)
 }
 
 func (v *TemplateVisitor) handleJoin(node *ast.Join) {
