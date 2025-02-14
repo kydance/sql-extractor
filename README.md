@@ -1,8 +1,11 @@
 # sql-extractor
 
+[![Go Version](https://img.shields.io/badge/Go-1.23%2B-blue)](https://golang.org/doc/devel/release.html#go1.23)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
 sql-extractor 是一个高性能的 SQL 解析和转换工具，它可以将 SQL 语句转换为参数化模板，并提取相关的表信息和参数值。该工具基于 TiDB 的 SQL 解析器，支持复杂的 SQL 语句分析。
 
-## 特性
+## 功能特性
 
 - 支持多种 SQL 操作类型：SELECT、INSERT、UPDATE、DELETE
 - SQL 语句参数化：将字面值转换为占位符
@@ -15,6 +18,19 @@ sql-extractor 是一个高性能的 SQL 解析和转换工具，它可以将 SQL
   - 子查询
   - 聚合函数
   - 各种 SQL 表达式（LIKE、IN、BETWEEN 等）
+
+## 性能优化
+
+- 使用 sync.Pool 复用 visitor 对象，减少内存分配
+- 预分配适当大小的切片，避免频繁扩容
+- 使用 strings.Builder 进行字符串拼接
+
+## 系统要求
+
+- Go 1.23 或更高版本
+- 依赖包：
+  - github.com/pingcap/tidb/pkg/parser
+  - github.com/kydance/ziwi
 
 ## 安装
 
@@ -46,9 +62,10 @@ func main() {
     }
     
     // 获取处理结果
-    fmt.Printf("模板化 SQL: %s\n", extractor.TemplatizeSQL())
-    fmt.Printf("参数: %v\n", extractor.Params())
-    fmt.Printf("表信息: %v\n", extractor.TableInfos())
+    fmt.Printf("模板化 SQL: %v\n", extractor.TemplatizedSQL()) // 返回 []string
+    fmt.Printf("参数: %v\n", extractor.Params())              // 返回 [][]any
+    fmt.Printf("表信息: %v\n", extractor.TableInfos())         // 返回 [][]*models.TableInfo
+    fmt.Printf("操作类型: %v\n", extractor.OpType())           // 返回 []models.SQLOpType
 }
 ```
 
@@ -61,6 +78,18 @@ sql := `
 `
 extractor := sqlextractor.NewExtractor(sql)
 err := extractor.Extract()
+if err != nil {
+    log.Fatal(err)
+}
+
+// 每个切片索引对应一条 SQL 语句的结果
+for i, sql := range extractor.TemplatizedSQL() {
+    fmt.Printf("SQL %d:\n", i+1)
+    fmt.Printf("  模板: %s\n", sql)
+    fmt.Printf("  参数: %v\n", extractor.Params()[i])
+    fmt.Printf("  表信息: %v\n", extractor.TableInfos()[i])
+    fmt.Printf("  操作类型: %v\n", extractor.OpType()[i])
+}
 ```
 
 ## API 文档
@@ -74,23 +103,29 @@ type Extractor struct {
     // 包含已过滤或未导出的字段
 }
 
-// 创建新的提取器
+// NewExtractor 创建新的提取器
 func NewExtractor(sql string) *Extractor
 
-// 提取 SQL 信息
+// Extract 提取 SQL 信息
 func (e *Extractor) Extract() error
 
-// 获取原始 SQL
+// RawSQL 获取原始 SQL
 func (e *Extractor) RawSQL() string
 
-// 获取模板化后的 SQL
-func (e *Extractor) TemplatizeSQL() string
+// SetRawSQL 设置原始 SQL
+func (e *Extractor) SetRawSQL(sql string)
 
-// 获取提取的参数
-func (e *Extractor) Params() []any
+// TemplatizedSQL 获取模板化后的 SQL 列表
+func (e *Extractor) TemplatizedSQL() []string
 
-// 获取表信息
-func (e *Extractor) TableInfos() []*models.TableInfo
+// Params 获取提取的参数列表
+func (e *Extractor) Params() [][]any
+
+// TableInfos 获取表信息列表
+func (e *Extractor) TableInfos() [][]*models.TableInfo
+
+// OpType 获取 SQL 操作类型列表
+func (e *Extractor) OpType() []models.SQLOpType
 ```
 
 ### TableInfo
@@ -104,35 +139,17 @@ type TableInfo struct {
 }
 ```
 
-## 性能优化
-
-- 使用 sync.Pool 复用 visitor 对象，减少内存分配
-- 预分配适当大小的切片，避免频繁扩容
-- 使用 strings.Builder 进行字符串拼接
-
-## 限制说明
-
-- 仅支持 MySQL 语法
-- 不支持存储过程和函数
-- 不处理注释内容
-- TiDB 的 parser 中 `JoinType` 只有 `Cross Join`、`Left Join` 和 `Right Join` 三种类型，而没有 `Inner Join` 和 `Full Outer Join`（或 `Full Join`），这是因为 TiDB 的内部执行计划器会将其他类型的 JOIN 转换为这三种基本类型进行处理:
-
-  - `Inner Join` 在逻辑上等价于在 `Cross Join` 之后添加一个 WHERE 子句来过滤连接条件:
-    `SELECT * FROM t1 INNER JOIN t2 ON t1.a = t2.b;` ==> `SELECT * FROM t1 CROSS JOIN t2 WHERE t1.a = t2.b;`
-  - `Full Outer Join` 可以通过 `Left Join` 和 `Right Join` 的 UNION 操作来实现:
-    `SELECT * FROM t1 FULL OUTER JOIN t2 ON t1.a = t2.b;` ==> `SELECT * FROM t1 LEFT JOIN t2 ON t1.a = t2.b UNION SELECT * FROM t1 RIGHT JOIN t2 ON t1.a = t2.b;`
-
 ## 贡献指南
 
 1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
+2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交您的更改 (`git commit -m 'feat: add some amazing feature'`)
 4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
+5. 开启一个 Pull Request
 
 ## 许可证
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
 ## 作者
 
