@@ -9,20 +9,21 @@ import (
 // parameters and table information. It is used to extract information from a
 // SQL string.
 type Extractor struct {
-	rawSQL       string              // raw SQL which needs to be extracted
-	templatedSQL string              // templatized SQL
-	opType       models.SQLOpType    // operation type: SELECT, INSERT, UPDATE, DELETE
-	params       []any               // parameters: where conditions, order by, limit, offset
-	tableInfos   []*models.TableInfo // table infos: Schema, Tablename
+	rawSQL       string                // raw SQL which needs to be extracted
+	templatedSQL []string              // templatized SQL
+	opType       []models.SQLOpType    // operation type: SELECT, INSERT, UPDATE, DELETE
+	params       [][]any               // parameters: where conditions, order by, limit, offset
+	tableInfos   [][]*models.TableInfo // table infos: Schema, Tablename
 }
 
 // NewExtractor creates a new Extractor. It requires a raw SQL string.
 func NewExtractor(sql string) *Extractor {
 	return &Extractor{
 		rawSQL:       sql,
-		templatedSQL: "",
-		params:       nil,
-		tableInfos:   nil,
+		templatedSQL: []string{},
+		opType:       []models.SQLOpType{},
+		params:       [][]any{},
+		tableInfos:   [][]*models.TableInfo{},
 	}
 }
 
@@ -33,13 +34,16 @@ func (e *Extractor) RawSQL() string { return e.rawSQL }
 func (e *Extractor) SetRawSQL(sql string) { e.rawSQL = sql }
 
 // TemplatizedSQL returns the templatized SQL.
-func (e *Extractor) TemplatizedSQL() string { return e.templatedSQL }
+func (e *Extractor) TemplatizedSQL() []string { return e.templatedSQL }
 
 // Params returns the parameters.
-func (e *Extractor) Params() []any { return e.params }
+func (e *Extractor) Params() [][]any { return e.params }
 
 // TableInfos returns the table infos.
-func (e *Extractor) TableInfos() []*models.TableInfo { return e.tableInfos }
+func (e *Extractor) TableInfos() [][]*models.TableInfo { return e.tableInfos }
+
+// OpType returns the operation type.
+func (e *Extractor) OpType() []models.SQLOpType { return e.opType }
 
 // Extract extracts information from the raw SQL string. It extracts the templatized
 // SQL, parameters, table information, and operation type.
@@ -53,8 +57,7 @@ func (e *Extractor) TableInfos() []*models.TableInfo { return e.tableInfos }
 //	}
 //	fmt.Println(extractor.TemplatizeSQL())
 func (e *Extractor) Extract() (err error) {
-	e.templatedSQL, e.tableInfos, e.params, e.opType, err = extract.NewExtractor().Extract(e.rawSQL)
-	if err != nil {
+	if e.templatedSQL, e.tableInfos, e.params, e.opType, err = extract.NewExtractor().Extract(e.rawSQL); err != nil {
 		return err
 	}
 

@@ -40,49 +40,41 @@ func NewExtractor() *Extractor {
 
 // Extract returns the templatized SQL, table info, parameters and operation type.
 // It supports multiple SQL statements separated by semicolons.
-func (p *Extractor) Extract(sql string) (string, []*models.TableInfo, []any, models.SQLOpType, error) {
+func (p *Extractor) Extract(sql string) ([]string, [][]*models.TableInfo, [][]any, []models.SQLOpType, error) {
 	if sql == "" {
-		return "", nil, nil, models.SQLOperationUnknown, fmt.Errorf("empty SQL statement")
+		return nil, nil, nil, nil, fmt.Errorf("empty SQL statement")
 	}
 
 	stmts, _, err := p.parser.Parse(sql, "", "")
 	if err != nil {
-		return "", nil, nil, models.SQLOperationUnknown, err
+		return nil, nil, nil, nil, err
 	}
 
 	if len(stmts) == 0 {
-		return "", nil, nil, models.SQLOperationUnknown, fmt.Errorf("no valid SQL statements found")
+		return nil, nil, nil, nil, fmt.Errorf("no valid SQL statements found")
 	}
 
 	// Handle multiple statements
 	var (
-		result        strings.Builder
-		allParams     []any
-		allTableInfos []*models.TableInfo
-		opType        models.SQLOpType
+		allTemplatizedSQL = make([]string, 0, len(stmts))
+		allParams         = make([][]any, 0, len(stmts))
+		allTableInfos     = make([][]*models.TableInfo, 0, len(stmts))
+		opType            = make([]models.SQLOpType, 0, len(stmts))
 	)
 
 	for idx := range stmts {
-		if idx > 0 {
-			result.WriteString("; ")
-		}
-
 		templatedSQL, tableInfos, params, op, err := p.extractOneStmt(stmts[idx])
 		if err != nil {
-			return "", nil, nil, models.SQLOperationUnknown, fmt.Errorf("error processing statement %d: %w", idx+1, err)
+			return nil, nil, nil, nil, fmt.Errorf("error processing statement %d: %w", idx+1, err)
 		}
 
-		result.WriteString(templatedSQL)
-		allParams = append(allParams, params...)
-		allTableInfos = append(allTableInfos, tableInfos...)
-
-		// For multiple statements, we'll return the operation type of the first statement
-		if idx == 0 {
-			opType = op
-		}
+		allTemplatizedSQL = append(allTemplatizedSQL, templatedSQL)
+		allParams = append(allParams, params)
+		allTableInfos = append(allTableInfos, tableInfos)
+		opType = append(opType, op)
 	}
 
-	return result.String(), allTableInfos, allParams, opType, nil
+	return allTemplatizedSQL, allTableInfos, allParams, opType, nil
 }
 
 // extractOneStmt handles a single SQL statement
