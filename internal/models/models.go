@@ -3,6 +3,9 @@ package models
 // SQLOpType represents the type of SQL operation
 type SQLOpType string
 
+// String returns the string representation of the SQLOpType.
+func (s SQLOpType) String() string { return string(s) }
+
 const (
 	SQLOperationUnknown SQLOpType = "UNKNOWN"
 	SQLOperationSelect  SQLOpType = "SELECT"
