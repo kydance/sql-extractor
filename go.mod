@@ -1,4 +1,4 @@
-module sql-extractor
+module github.com/kydance/sql-extractor
 
 go 1.23.4
 

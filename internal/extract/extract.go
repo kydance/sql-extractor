@@ -5,13 +5,12 @@ import (
 	"strings"
 	"sync"
 
-	"sql-extractor/internal/models"
-
 	"github.com/kydance/ziwi/slices"
-
 	"github.com/pingcap/tidb/pkg/parser"
 	"github.com/pingcap/tidb/pkg/parser/ast"
 	"github.com/pingcap/tidb/pkg/parser/test_driver"
+
+	"github.com/kydance/sql-extractor/internal/models"
 )
 
 const paramsMaxCount = 64

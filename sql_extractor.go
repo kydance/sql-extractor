@@ -1,8 +1,8 @@
 package sqlextractor
 
 import (
-	"sql-extractor/internal/extract"
-	"sql-extractor/internal/models"
+	"github.com/kydance/sql-extractor/internal/extract"
+	"github.com/kydance/sql-extractor/internal/models"
 )
 
 // Extractor is a struct that holds the raw SQL, templatized SQL, operation type,

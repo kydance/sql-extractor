@@ -35,7 +35,7 @@ sql-extractor 是一个高性能的 SQL 解析和转换工具，它可以将 SQL
 ## 安装
 
 ```bash
-go get github.com/kydance/sql-extractor
+go install github.com/kydance/sql-extractor@latest
 ```
 
 ## 快速开始
@@ -53,7 +53,8 @@ import (
 
 func main() {
     // 创建提取器
-    extractor := sqlextractor.NewExtractor("SELECT * FROM users WHERE age > 18 AND name LIKE 'John%'")
+    extractor := sqlextractor.NewExtractor(
+        "SELECT * FROM users WHERE age > 18 AND name LIKE 'John%'")
     
     // 提取 SQL 信息
     err := extractor.Extract()

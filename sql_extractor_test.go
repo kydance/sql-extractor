@@ -3,9 +3,9 @@ package sqlextractor
 import (
 	"testing"
 
-	"sql-extractor/internal/models"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kydance/sql-extractor/internal/models"
 )
 
 func TestExtractor_RawSQL(t *testing.T) {
