@@ -1,69 +1,128 @@
-run:
-    timeout: 5m
-
-    # Allow multiple parallel golangci-lint instances running.
-    # If false (default) - golangci-lint acquires file lock on start.
-    allow-parallel-runners: true
-
-issues:
-    skip-dirs:
-        - test
-
-    exclude-files:
-        - _test.go
-
-linters-settings:
-    errcheck:
-        check-blank: false
-        check-type-assertions: false
-    funlen:
-        lines: 120
-        statements: 60
-    goconst:
-        min-len: 3
-        min-occurrences: 3
-    lll:
-        line-length: 120
-        tab-width: 4
-    misspell:
-        locale: US
-        ignore-words:
-            - importas
-    govet:
-        shadow: true
-        check-unreachable: true
-        check-rangeloops: true
-        check-copylocks: true
-        fieldalignment: true
-        enable:
-            - nilness
+version: "2"
 
 linters:
-    disable-all: true
-    enable:
-        - asciicheck
-        - bodyclose
-        - copyloopvar
-        - dupl
-        - errcheck
-        - funlen
-        - goconst
-        - gocyclo
-        - gofmt
-        - goimports
-        - goprintffuncname
-        - gosimple
-        - govet
-        - ineffassign
-        - lll
-        - misspell
-        - nilerr
-        - prealloc
-        - rowserrcheck
-        - staticcheck
-        - stylecheck
-        - typecheck
-        - unconvert
-        - unparam
-        - unused
-        - whitespace
+  Default: none
+  tests-disable-all: true
+
+  # Enable specific linter.
+  enable:
+    - asciicheck # Checks that all code identifiers does not have non-ASCII symbols in the name. [fast]
+    - bodyclose # Checks whether HTTP response body is closed successfully.
+    - containedctx # Containedctx is a linter that detects struct contained context.Context field.
+    - contextcheck # Check whether the function uses a non-inherited context.
+    - copyloopvar # A linter detects places where loop variables are copied. [fast, auto-fix]
+    - cyclop # Checks function and package cyclomatic complexity. [fast]
+    - dupl # Detects duplicate fragments of code.
+    - errcheck # Errcheck is a program for checking for unchecked errors in Go code. These unchecked errors can be critical bugs in some cases
+    - funlen # Checks for long functions. [fast]
+    - goconst # Finds repeated strings that could be replaced by a constant.
+    - gocyclo # Computes and checks the cyclomatic complexity of functions. [fast]
+    - goprintffuncname # Checks that printf-like functions are named with `f` at the end. [fast]
+    - gosec # Inspects source code for security problems.
+    - govet # Vet examines Go source code and reports suspicious constructs. It is roughly the same as 'go vet' and uses its passes. [auto-fix]
+    - ineffassign # Detects when assignments to existing variables are not used. [fast]
+    - iface # Detect the incorrect use of interfaces, helping developers avoid interface pollution. [auto-fix]
+    - lll # Reports long lines. [fast]
+    - misspell # Finds commonly misspelled English words. [fast, auto-fix]
+    - makezero # Finds slice declarations with non-zero initial length.
+    - nilerr # Finds the code that returns nil even if it checks that the error is not nil.
+    - revive # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint. [auto-fix]
+    - rowserrcheck # Checks whether Rows.Err of rows is checked successfully.
+    - staticcheck # It's the set of rules from staticcheck. [auto-fix]
+    - perfsprint # Checks that fmt.Sprintf can be replaced with a faster alternative. [auto-fix]
+    - prealloc # Finds slice declarations that could potentially be pre-allocated. [fast]
+    - tagalign # Check that struct tags are well aligned. [fast, auto-fix]
+    - unconvert # Remove unnecessary type conversions.
+    - unparam # Reports unused function parameters.
+    - unused # Checks Go code for unused constants, variables, functions and types.
+    - whitespace # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc. [fast, auto-fix]
+
+  # All available settings of specific linters.
+  settings:
+    funlen:
+      lines: 150
+      statements: 100
+    golines:
+      max-line-length: 120
+    goconst:
+      min-len: 5
+      min-occurrences: 3
+    lll:
+      line-length: 120
+    cyclop:
+      max-complexity: 20
+    iface:
+      min-impl: 2
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+      disable-default-exclusions: false
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - os.Remove
+        - os.ReadFile  # Replace deprecated io/ioutil.ReadFile
+        - io.Copy(*bytes.Buffer)
+        - io.Copy(os.Stdout)
+    revive:
+      severity: error # warning # error
+      enable-all-rules: false
+      rules:
+        - name: blank-imports          # 禁止空导入 (`.`)
+        - name: increment-decrement    # 强制使用 `i++` 和 `i--`
+        - name: superfluous-else       # 避免多余的 `else` 语句 (可以与 `if` 块一起缩进)
+        - name: empty-block            # 警告空的代码块
+        - name: if-return              # 简化 `if` 语句后的 `return`
+        - name: unexported-return      # 警告公共函数返回未导出类型
+        - name: context-as-argument    # 强制 `context.Context` 作为函数第一个参数
+        - name: error-return           # 强制错误返回值是最后一个
+        - name: empty-lines            # 检查代码块开头或结尾多余的空行
+        - name: unreachable-code       # 警告不可达代码
+        - name: var-naming             # 检查变量命名规范
+        - name: unused-parameter       # 建议重命名或删除未使用的函数参数
+          arguments:
+            - allow-regex: "^_"         # 允许以 `_` 开头的参数不被使用
+        - name: errorf                  # 建议将 `errors.New(fmt.Sprintf())` 替换为 `fmt.Errorf()`
+        - name: time-equal              # 建议使用 `time.Time.Equal` 比较时间
+        - name: time-naming             # 检查 `time.Time` 命名规范
+        - name: redefines-builtin-id    # 警告重新定义内置标识符
+        - name: bare-return             # 警告裸返回
+        - name: defer                   # 检查 `defer` 语句
+        - name: early-return            # 检查早期返回
+        - name: optimize-operands-order # 优化操作数顺序
+        - name: receiver-naming         # 检查接收器命名规范
+        - name: use-any                 # 使用 `any` 替代 `interface{}`
+
+  # Defines a set of rules to ignore issues.
+  # It does not skip the analysis, and so does not ignore "typecheck" errors.
+  exclusions:
+    # Log a warning if an exclusion rule is unused.
+    warn-unused: true
+    # Excluding configuration per-path, per-linter, per-text and per-source.
+    rules:
+      # Exclude some linters from running on tests files.
+      - path: _test\.go
+        linters:
+          - dupl
+          - goconst
+          - golines
+          - lll
+
+formatters:
+  enable:
+    - goimports # Checks if the code and import statements are formatted according to the 'goimports' command.
+    - golines # Checks if code is formatted, and fixes long lines.
+  settings:
+    gofmt:
+      simplify: false
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+        - pattern: a[b:len(a)]
+          replacement: a[b:]
+
+run:
+  timeout: 5m
+  allow-parallel-runners: true
+  allow-serial-runners: true
+

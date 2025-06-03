@@ -1,6 +1,7 @@
 package extract
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -39,9 +40,11 @@ func NewExtractor() *Extractor {
 
 // Extract returns the templatized SQL, table info, parameters and operation type.
 // It supports multiple SQL statements separated by semicolons.
-func (p *Extractor) Extract(sql string) ([]string, [][]*models.TableInfo, [][]any, []models.SQLOpType, error) {
+func (p *Extractor) Extract(sql string) (
+	[]string, [][]*models.TableInfo, [][]any, []models.SQLOpType, error,
+) {
 	if sql == "" {
-		return nil, nil, nil, nil, fmt.Errorf("empty SQL statement")
+		return nil, nil, nil, nil, errors.New("empty SQL statement")
 	}
 
 	stmts, _, err := p.parser.Parse(sql, "", "")
@@ -50,7 +53,7 @@ func (p *Extractor) Extract(sql string) ([]string, [][]*models.TableInfo, [][]an
 	}
 
 	if len(stmts) == 0 {
-		return nil, nil, nil, nil, fmt.Errorf("no valid SQL statements found")
+		return nil, nil, nil, nil, errors.New("no valid SQL statements found")
 	}
 
 	// Handle multiple statements
@@ -77,8 +80,15 @@ func (p *Extractor) Extract(sql string) ([]string, [][]*models.TableInfo, [][]an
 }
 
 // extractOneStmt handles a single SQL statement
-func (p *Extractor) extractOneStmt(stmt ast.StmtNode) (string, []*models.TableInfo, []any, models.SQLOpType, error) {
-	v := p.pool.Get().(*ExtractVisitor)
+func (p *Extractor) extractOneStmt(stmt ast.StmtNode) (
+	string, []*models.TableInfo, []any, models.SQLOpType, error,
+) {
+	v, ok := p.pool.Get().(*ExtractVisitor)
+	if !ok {
+		return "", nil, nil, models.SQLOperationUnknown,
+			errors.New("failed to get ExtractVisitor from pool")
+	}
+
 	defer func() {
 		v.builder.Reset()
 		v.params = v.params[:0]
@@ -123,7 +133,9 @@ var joinTypeMap = map[ast.JoinType]string{
 // Enter implement ast.Visitor interface. It handles ast.Node
 //
 // Return: nil, true - 不继续遍历， n, false - 继续遍历
-func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) { //nolint:funlen,gocyclo
+//
+//nolint:gocyclo,cyclop
+func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 	if n == nil {
 		return n, false
 	}
@@ -229,6 +241,8 @@ func (v *ExtractVisitor) Leave(n ast.Node) (ast.Node, bool) {
 }
 
 // SELECT 子句: SELECT 列表、FROM 子句、WHERE 子句、GROUP BY 子句、HAVING 子句、ORDER BY 子句、LIMIT 子句
+//
+// nolint:cyclop
 func (v *ExtractVisitor) handleSelectStmt(node *ast.SelectStmt) {
 	if v.opType == models.SQLOperationUnknown {
 		v.opType = models.SQLOperationSelect
@@ -650,7 +664,7 @@ func (v *ExtractVisitor) handlePatternInExpr(node *ast.PatternInExpr) {
 
 func (v *ExtractVisitor) handleBinaryOperationExpr(node *ast.BinaryOperationExpr) {
 	node.L.Accept(v)
-	v.builder.WriteString(fmt.Sprintf(" %s ", node.Op.String()))
+	fmt.Fprintf(v.builder, " %s ", node.Op.String())
 	node.R.Accept(v)
 }
 
@@ -671,20 +685,20 @@ func (v *ExtractVisitor) handleValueExpr(node *test_driver.ValueExpr) {
 	if v.inAggrFunc { // 在聚合函数中，直接输出值
 		switch val := node.GetValue().(type) {
 		case int64, uint64:
-			v.builder.WriteString(fmt.Sprintf("%d", val))
+			fmt.Fprintf(v.builder, "%d", val)
 
 		case float64:
-			v.builder.WriteString(fmt.Sprintf("%f", val))
+			fmt.Fprintf(v.builder, "%f", val)
 
 		case string:
-			v.builder.WriteString(fmt.Sprintf("'%s'", val))
+			fmt.Fprintf(v.builder, "'%s'", val)
 
 		case *test_driver.MyDecimal:
 			v.builder.WriteString(val.String())
 
 		default:
 			fmt.Printf("ValueExpr type: %T\n", node.GetValue())
-			v.builder.WriteString(fmt.Sprintf("%v", val))
+			fmt.Fprintf(v.builder, "%v", val)
 		}
 	} else {
 		// param -> ?
@@ -902,6 +916,7 @@ func (v *ExtractVisitor) handleDefaultExpr(node *ast.DefaultExpr) {
 
 // handleTimeUnitExpr 处理时间单位表达式
 func (v *ExtractVisitor) handleTimeUnitExpr(node *ast.TimeUnitExpr) {
+	_ = node
 	// 不要在这里写入任何内容，因为参数占位符和 INTERVAL 关键字
 	// 会在父节点（如 FuncCallExpr）中处理
 }
@@ -929,6 +944,6 @@ func (v *ExtractVisitor) handleCompareSubqueryExpr(node *ast.CompareSubqueryExpr
 
 // FIXME logError logs unhandled node type errors during SQL templatization
 func (v *ExtractVisitor) logError(details string) {
-	msg := fmt.Sprintf("[SQL Templatize Error] unhandled node type: %s", details)
+	msg := "[SQL Templatize Error] unhandled node type: " + details
 	fmt.Println(msg)
 }

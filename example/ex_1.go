@@ -10,7 +10,8 @@ import (
 func main() {
 	// 创建提取器
 	extractor := sqlextractor.NewExtractor(
-		"SELECT * FROM users WHERE age > 18 AND name LIKE 'John%';SELECT a FROM t1 WHERE a = 1 AND b = 2;")
+		"SELECT * FROM users WHERE age > 18 AND name LIKE 'John%';SELECT a FROM t1 WHERE a = 1 AND b = 2;",
+	)
 
 	// 提取 SQL 信息
 	err := extractor.Extract()

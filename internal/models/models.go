@@ -39,10 +39,17 @@ func NewTableInfo(args ...string) *TableInfo {
 		return NewTableInfoWithSchemaAndName(args[0], args[1])
 	}
 
-	panic("invalid args: len(args) should be 0 or 2, the first half are schemas, the second half are table names.")
+	panic(
+		"invalid args: len(args) should be 0 or 2, the first half are schemas, the second half are table names.",
+	)
 }
 
 func (t *TableInfo) SetTableName(tableName string) { t.tableName = tableName }
-func (t *TableInfo) TableName() string             { return t.tableName }
-func (t *TableInfo) SetSchema(schema string)       { t.schema = schema }
-func (t *TableInfo) Schema() string                { return t.schema }
+func (t *TableInfo) TableName() string {
+	if t.schema != "" {
+		return t.schema + "." + t.tableName
+	}
+	return t.tableName
+}
+func (t *TableInfo) SetSchema(schema string) { t.schema = schema }
+func (t *TableInfo) Schema() string          { return t.schema }
