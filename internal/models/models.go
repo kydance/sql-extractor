@@ -44,12 +44,20 @@ func NewTableInfo(args ...string) *TableInfo {
 	)
 }
 
-func (t *TableInfo) SetTableName(tableName string) { t.tableName = tableName }
-func (t *TableInfo) TableName() string {
+// TableNameWithSchema returns the table name with schema.
+// If the schema is empty, it returns the table name without schema.
+//
+// Returns:
+//   - string: the table name with schema, or the table name if the schema is empty
+//   - bool: whether the schema is empty
+func (t *TableInfo) TableNameWithSchema() (string, bool) {
 	if t.schema != "" {
-		return t.schema + "." + t.tableName
+		return t.schema + "." + t.tableName, true
 	}
-	return t.tableName
+	return t.tableName, false
 }
-func (t *TableInfo) SetSchema(schema string) { t.schema = schema }
-func (t *TableInfo) Schema() string          { return t.schema }
+
+func (t *TableInfo) SetTableName(tableName string) { t.tableName = tableName }
+func (t *TableInfo) TableName() string             { return t.tableName }
+func (t *TableInfo) SetSchema(schema string)       { t.schema = schema }
+func (t *TableInfo) Schema() string                { return t.schema }
