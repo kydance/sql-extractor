@@ -107,6 +107,7 @@ linters:
           - goconst
           - golines
           - lll
+          - funlen
 
 formatters:
   enable:

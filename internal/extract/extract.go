@@ -955,153 +955,150 @@ func (v *ExtractVisitor) handleShowStmt(node *ast.ShowStmt) {
 	// 处理不同类型的 SHOW 语句
 	switch node.Tp {
 	case ast.ShowCreateTable:
-		v.builder.WriteString("CREATE TABLE ")
-		if node.Table != nil {
-			if node.Table.Schema.O != "" {
-				v.builder.WriteString(node.Table.Schema.O)
-				v.builder.WriteString(".")
-			}
-			v.builder.WriteString(node.Table.Name.O)
-		}
+		v.handleShowCreateTable(node)
 	case ast.ShowCreateDatabase:
-		v.builder.WriteString("CREATE DATABASE ")
-		if node.DBName != "" {
-			v.builder.WriteString(node.DBName)
-		}
-		if node.IfNotExists {
-			v.builder.WriteString(" IF NOT EXISTS")
-		}
+		v.handleShowCreateDatabase(node)
 	case ast.ShowDatabases:
-		v.builder.WriteString("DATABASES")
-		if node.Pattern != nil {
-			v.builder.WriteString(" LIKE ")
-			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
-				v.builder.WriteString("?")
-				v.params = append(v.params, valExpr.GetValue())
-			} else {
-				node.Pattern.Pattern.Accept(v)
-			}
-		}
-		if node.Where != nil {
-			v.builder.WriteString(" WHERE ")
-			node.Where.Accept(v)
-		}
+		v.handleShowDatabases(node)
 	case ast.ShowTables:
-		v.builder.WriteString("TABLES")
-		if node.DBName != "" {
-			v.builder.WriteString(" FROM ")
-			v.builder.WriteString(node.DBName)
-		}
-		if node.Pattern != nil {
-			v.builder.WriteString(" LIKE ")
-			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
-				v.builder.WriteString("?")
-				v.params = append(v.params, valExpr.GetValue())
-			} else {
-				node.Pattern.Pattern.Accept(v)
-			}
-		}
-		if node.Where != nil {
-			v.builder.WriteString(" WHERE ")
-			node.Where.Accept(v)
-		}
+		v.handleShowTables(node)
 	case ast.ShowColumns:
-		v.builder.WriteString("COLUMNS FROM ")
-		if node.Table != nil {
-			if node.Table.Schema.O != "" {
-				v.builder.WriteString(node.Table.Schema.O)
-				v.builder.WriteString(".")
-			}
-			v.builder.WriteString(node.Table.Name.O)
-		}
-		if node.Pattern != nil {
-			v.builder.WriteString(" LIKE ")
-			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
-				v.builder.WriteString("?")
-				v.params = append(v.params, valExpr.GetValue())
-			} else {
-				node.Pattern.Pattern.Accept(v)
-			}
-		}
-		if node.Where != nil {
-			v.builder.WriteString(" WHERE ")
-			node.Where.Accept(v)
-		}
+		v.handleShowColumns(node)
 	case ast.ShowIndex:
-		v.builder.WriteString("INDEX FROM ")
-		if node.Table != nil {
-			if node.Table.Schema.O != "" {
-				v.builder.WriteString(node.Table.Schema.O)
-				v.builder.WriteString(".")
-			}
-			v.builder.WriteString(node.Table.Name.O)
-		}
+		v.handleShowIndex(node)
 	case ast.ShowStatus:
-		v.builder.WriteString("STATUS")
-		if node.Pattern != nil {
-			v.builder.WriteString(" LIKE ")
-			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
-				v.builder.WriteString("?")
-				v.params = append(v.params, valExpr.GetValue())
-			} else {
-				node.Pattern.Pattern.Accept(v)
-			}
-		}
-		if node.Where != nil {
-			v.builder.WriteString(" WHERE ")
-			node.Where.Accept(v)
-		}
+		v.handleShowStatus(node)
 	case ast.ShowVariables:
-		v.builder.WriteString("VARIABLES")
-		if node.Pattern != nil {
-			v.builder.WriteString(" LIKE ")
-			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
-				v.builder.WriteString("?")
-				v.params = append(v.params, valExpr.GetValue())
-			} else {
-				node.Pattern.Pattern.Accept(v)
-			}
-		}
-		if node.Where != nil {
-			v.builder.WriteString(" WHERE ")
-			node.Where.Accept(v)
-		}
+		v.handleShowVariables(node)
 	case ast.ShowProcessList:
-		if node.Full {
-			v.builder.WriteString("FULL ")
-		}
-		v.builder.WriteString("PROCESSLIST")
+		v.handleShowProcessList(node)
 	case ast.ShowTableStatus:
-		v.builder.WriteString("TABLE STATUS")
-		if node.DBName != "" {
-			v.builder.WriteString(" FROM ")
-			v.builder.WriteString(node.DBName)
-		}
-		if node.Pattern != nil {
-			v.builder.WriteString(" LIKE ")
-			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
-				v.builder.WriteString("?")
-				v.params = append(v.params, valExpr.GetValue())
-			} else {
-				node.Pattern.Pattern.Accept(v)
-			}
-		}
-		if node.Where != nil {
-			v.builder.WriteString(" WHERE ")
-			node.Where.Accept(v)
-		}
+		v.handleShowTableStatus(node)
 	case ast.ShowWarnings, ast.ShowErrors:
-		if node.Tp == ast.ShowWarnings {
-			v.builder.WriteString("WARNINGS")
-		} else {
-			v.builder.WriteString("ERRORS")
-		}
-		if node.Limit != nil {
-			node.Limit.Accept(v)
-		}
+		v.handleShowWarningsOrErrors(node)
 	default:
 		// 其他 SHOW 语句类型的处理可以在这里添加
 		v.logError(fmt.Sprintf("Unhandled ShowStmt type: %v", node.Tp))
+	}
+}
+
+// handleShowCreateTable 处理 SHOW CREATE TABLE 语句
+func (v *ExtractVisitor) handleShowCreateTable(node *ast.ShowStmt) {
+	v.builder.WriteString("CREATE TABLE ")
+	if node.Table != nil {
+		v.appendTableName(node.Table)
+	}
+}
+
+// handleShowCreateDatabase 处理 SHOW CREATE DATABASE 语句
+func (v *ExtractVisitor) handleShowCreateDatabase(node *ast.ShowStmt) {
+	v.builder.WriteString("CREATE DATABASE ")
+	if node.DBName != "" {
+		v.builder.WriteString(node.DBName)
+	}
+	if node.IfNotExists {
+		v.builder.WriteString(" IF NOT EXISTS")
+	}
+}
+
+// handleShowDatabases 处理 SHOW DATABASES 语句
+func (v *ExtractVisitor) handleShowDatabases(node *ast.ShowStmt) {
+	v.builder.WriteString("DATABASES")
+	v.appendPatternAndWhere(node)
+}
+
+// handleShowTables 处理 SHOW TABLES 语句
+func (v *ExtractVisitor) handleShowTables(node *ast.ShowStmt) {
+	v.builder.WriteString("TABLES")
+	if node.DBName != "" {
+		v.builder.WriteString(" FROM ")
+		v.builder.WriteString(node.DBName)
+	}
+	v.appendPatternAndWhere(node)
+}
+
+// handleShowColumns 处理 SHOW COLUMNS 语句
+func (v *ExtractVisitor) handleShowColumns(node *ast.ShowStmt) {
+	v.builder.WriteString("COLUMNS FROM ")
+	if node.Table != nil {
+		v.appendTableName(node.Table)
+	}
+	v.appendPatternAndWhere(node)
+}
+
+// handleShowIndex 处理 SHOW INDEX 语句
+func (v *ExtractVisitor) handleShowIndex(node *ast.ShowStmt) {
+	v.builder.WriteString("INDEX FROM ")
+	if node.Table != nil {
+		v.appendTableName(node.Table)
+	}
+}
+
+// handleShowStatus 处理 SHOW STATUS 语句
+func (v *ExtractVisitor) handleShowStatus(node *ast.ShowStmt) {
+	v.builder.WriteString("STATUS")
+	v.appendPatternAndWhere(node)
+}
+
+// handleShowVariables 处理 SHOW VARIABLES 语句
+func (v *ExtractVisitor) handleShowVariables(node *ast.ShowStmt) {
+	v.builder.WriteString("VARIABLES")
+	v.appendPatternAndWhere(node)
+}
+
+// handleShowProcessList 处理 SHOW PROCESSLIST 语句
+func (v *ExtractVisitor) handleShowProcessList(node *ast.ShowStmt) {
+	if node.Full {
+		v.builder.WriteString("FULL ")
+	}
+	v.builder.WriteString("PROCESSLIST")
+}
+
+// handleShowTableStatus 处理 SHOW TABLE STATUS 语句
+func (v *ExtractVisitor) handleShowTableStatus(node *ast.ShowStmt) {
+	v.builder.WriteString("TABLE STATUS")
+	if node.DBName != "" {
+		v.builder.WriteString(" FROM ")
+		v.builder.WriteString(node.DBName)
+	}
+	v.appendPatternAndWhere(node)
+}
+
+// handleShowWarningsOrErrors 处理 SHOW WARNINGS 或 SHOW ERRORS 语句
+func (v *ExtractVisitor) handleShowWarningsOrErrors(node *ast.ShowStmt) {
+	if node.Tp == ast.ShowWarnings {
+		v.builder.WriteString("WARNINGS")
+	} else {
+		v.builder.WriteString("ERRORS")
+	}
+	if node.Limit != nil {
+		node.Limit.Accept(v)
+	}
+}
+
+// appendTableName 添加表名到 SQL 字符串
+func (v *ExtractVisitor) appendTableName(table *ast.TableName) {
+	if table.Schema.O != "" {
+		v.builder.WriteString(table.Schema.O)
+		v.builder.WriteString(".")
+	}
+	v.builder.WriteString(table.Name.O)
+}
+
+// appendPatternAndWhere 添加 LIKE 和 WHERE 子句到 SQL 字符串
+func (v *ExtractVisitor) appendPatternAndWhere(node *ast.ShowStmt) {
+	if node.Pattern != nil {
+		v.builder.WriteString(" LIKE ")
+		if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
+			v.builder.WriteString("?")
+			v.params = append(v.params, valExpr.GetValue())
+		} else {
+			node.Pattern.Pattern.Accept(v)
+		}
+	}
+	if node.Where != nil {
+		v.builder.WriteString(" WHERE ")
+		node.Where.Accept(v)
 	}
 }
 
