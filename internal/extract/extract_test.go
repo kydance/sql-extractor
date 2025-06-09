@@ -2332,3 +2332,322 @@ func TestTemplatizeSQL_EmptySpace(t *testing.T) {
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 }
+
+func TestTemplatizeSQL_ShowStatements(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewExtractor()
+
+	// Test SHOW CREATE TABLE
+	sql := "SHOW CREATE TABLE `tbUserTask_6`"
+	template, tableInfos, params, op, err := parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW CREATE TABLE tbUserTask_6"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0])) // 应该没有表信息
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW CREATE DATABASE
+	sql = "SHOW CREATE DATABASE test_db"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW CREATE DATABASE test_db"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW CREATE DATABASE IF NOT EXISTS
+	sql = "SHOW CREATE DATABASE IF NOT EXISTS test_db"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW CREATE DATABASE test_db IF NOT EXISTS"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW DATABASES
+	sql = "SHOW DATABASES"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW DATABASES"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW DATABASES LIKE
+	sql = "SHOW DATABASES LIKE 'test%'"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW DATABASES LIKE ?"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(1, len(params[0]))
+	as.Equal("test%", params[0][0])
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW TABLES
+	sql = "SHOW TABLES"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW TABLES"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW TABLES FROM
+	sql = "SHOW TABLES FROM test_db"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW TABLES FROM test_db"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW TABLES LIKE
+	sql = "SHOW TABLES LIKE 'user%'"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW TABLES LIKE ?"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(1, len(params[0]))
+	as.Equal("user%", params[0][0])
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW TABLES WHERE
+	sql = "SHOW TABLES WHERE `Table_type` = 'BASE TABLE'"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW TABLES WHERE Table_type eq ?"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(1, len(params[0]))
+	as.Equal("BASE TABLE", params[0][0])
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW COLUMNS
+	sql = "SHOW COLUMNS FROM users"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW COLUMNS FROM users"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW COLUMNS FROM schema.table
+	sql = "SHOW COLUMNS FROM mydb.users"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW COLUMNS FROM mydb.users"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW COLUMNS LIKE
+	sql = "SHOW COLUMNS FROM users LIKE 'id%'"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW COLUMNS FROM users LIKE ?"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(1, len(params[0]))
+	as.Equal("id%", params[0][0])
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW INDEX
+	sql = "SHOW INDEX FROM users"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW INDEX FROM users"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW PROCESSLIST
+	sql = "SHOW PROCESSLIST"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW PROCESSLIST"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW FULL PROCESSLIST
+	sql = "SHOW FULL PROCESSLIST"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW FULL PROCESSLIST"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW VARIABLES
+	sql = "SHOW VARIABLES"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW VARIABLES"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW VARIABLES LIKE
+	sql = "SHOW VARIABLES LIKE 'max_%'"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW VARIABLES LIKE ?"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(1, len(params[0]))
+	as.Equal("max_%", params[0][0])
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW STATUS
+	sql = "SHOW STATUS"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW STATUS"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW TABLE STATUS
+	sql = "SHOW TABLE STATUS"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW TABLE STATUS"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW TABLE STATUS FROM
+	sql = "SHOW TABLE STATUS FROM test_db"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW TABLE STATUS FROM test_db"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW WARNINGS
+	sql = "SHOW WARNINGS"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW WARNINGS"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+
+	// Test SHOW ERRORS
+	sql = "SHOW ERRORS"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SHOW ERRORS"},
+		template,
+	)
+	as.Equal(1, len(params))
+	as.Equal(0, len(params[0]))
+	as.Equal(1, len(tableInfos))
+	as.Equal(0, len(tableInfos[0]))
+	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
+}

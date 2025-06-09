@@ -13,6 +13,7 @@ const (
 	SQLOperationUpdate  SQLOpType = "UPDATE"
 	SQLOperationDelete  SQLOpType = "DELETE"
 	SQLOperationExplain SQLOpType = "EXPLAIN"
+	SQLOperationShow    SQLOpType = "SHOW"
 )
 
 type TableInfo struct {

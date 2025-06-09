@@ -162,6 +162,8 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 		v.handleDeleteStmt(node)
 	case *ast.ExplainStmt:
 		v.handleExplainStmt(node)
+	case *ast.ShowStmt:
+		v.handleShowStmt(node)
 
 	// 3. 表结构层 - 表引用和连接
 	case *ast.TableSource:
@@ -940,6 +942,167 @@ func (v *ExtractVisitor) handleCompareSubqueryExpr(node *ast.CompareSubqueryExpr
 	v.builder.WriteByte('(')
 	node.R.Accept(v)
 	v.builder.WriteByte(')')
+}
+
+// handleShowStmt 处理 SHOW 语句
+func (v *ExtractVisitor) handleShowStmt(node *ast.ShowStmt) {
+	if v.opType == models.SQLOperationUnknown {
+		v.opType = models.SQLOperationShow
+	}
+
+	v.builder.WriteString("SHOW ")
+
+	// 处理不同类型的 SHOW 语句
+	switch node.Tp {
+	case ast.ShowCreateTable:
+		v.builder.WriteString("CREATE TABLE ")
+		if node.Table != nil {
+			if node.Table.Schema.O != "" {
+				v.builder.WriteString(node.Table.Schema.O)
+				v.builder.WriteString(".")
+			}
+			v.builder.WriteString(node.Table.Name.O)
+		}
+	case ast.ShowCreateDatabase:
+		v.builder.WriteString("CREATE DATABASE ")
+		if node.DBName != "" {
+			v.builder.WriteString(node.DBName)
+		}
+		if node.IfNotExists {
+			v.builder.WriteString(" IF NOT EXISTS")
+		}
+	case ast.ShowDatabases:
+		v.builder.WriteString("DATABASES")
+		if node.Pattern != nil {
+			v.builder.WriteString(" LIKE ")
+			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
+				v.builder.WriteString("?")
+				v.params = append(v.params, valExpr.GetValue())
+			} else {
+				node.Pattern.Pattern.Accept(v)
+			}
+		}
+		if node.Where != nil {
+			v.builder.WriteString(" WHERE ")
+			node.Where.Accept(v)
+		}
+	case ast.ShowTables:
+		v.builder.WriteString("TABLES")
+		if node.DBName != "" {
+			v.builder.WriteString(" FROM ")
+			v.builder.WriteString(node.DBName)
+		}
+		if node.Pattern != nil {
+			v.builder.WriteString(" LIKE ")
+			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
+				v.builder.WriteString("?")
+				v.params = append(v.params, valExpr.GetValue())
+			} else {
+				node.Pattern.Pattern.Accept(v)
+			}
+		}
+		if node.Where != nil {
+			v.builder.WriteString(" WHERE ")
+			node.Where.Accept(v)
+		}
+	case ast.ShowColumns:
+		v.builder.WriteString("COLUMNS FROM ")
+		if node.Table != nil {
+			if node.Table.Schema.O != "" {
+				v.builder.WriteString(node.Table.Schema.O)
+				v.builder.WriteString(".")
+			}
+			v.builder.WriteString(node.Table.Name.O)
+		}
+		if node.Pattern != nil {
+			v.builder.WriteString(" LIKE ")
+			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
+				v.builder.WriteString("?")
+				v.params = append(v.params, valExpr.GetValue())
+			} else {
+				node.Pattern.Pattern.Accept(v)
+			}
+		}
+		if node.Where != nil {
+			v.builder.WriteString(" WHERE ")
+			node.Where.Accept(v)
+		}
+	case ast.ShowIndex:
+		v.builder.WriteString("INDEX FROM ")
+		if node.Table != nil {
+			if node.Table.Schema.O != "" {
+				v.builder.WriteString(node.Table.Schema.O)
+				v.builder.WriteString(".")
+			}
+			v.builder.WriteString(node.Table.Name.O)
+		}
+	case ast.ShowStatus:
+		v.builder.WriteString("STATUS")
+		if node.Pattern != nil {
+			v.builder.WriteString(" LIKE ")
+			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
+				v.builder.WriteString("?")
+				v.params = append(v.params, valExpr.GetValue())
+			} else {
+				node.Pattern.Pattern.Accept(v)
+			}
+		}
+		if node.Where != nil {
+			v.builder.WriteString(" WHERE ")
+			node.Where.Accept(v)
+		}
+	case ast.ShowVariables:
+		v.builder.WriteString("VARIABLES")
+		if node.Pattern != nil {
+			v.builder.WriteString(" LIKE ")
+			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
+				v.builder.WriteString("?")
+				v.params = append(v.params, valExpr.GetValue())
+			} else {
+				node.Pattern.Pattern.Accept(v)
+			}
+		}
+		if node.Where != nil {
+			v.builder.WriteString(" WHERE ")
+			node.Where.Accept(v)
+		}
+	case ast.ShowProcessList:
+		if node.Full {
+			v.builder.WriteString("FULL ")
+		}
+		v.builder.WriteString("PROCESSLIST")
+	case ast.ShowTableStatus:
+		v.builder.WriteString("TABLE STATUS")
+		if node.DBName != "" {
+			v.builder.WriteString(" FROM ")
+			v.builder.WriteString(node.DBName)
+		}
+		if node.Pattern != nil {
+			v.builder.WriteString(" LIKE ")
+			if valExpr, ok := node.Pattern.Pattern.(*test_driver.ValueExpr); ok {
+				v.builder.WriteString("?")
+				v.params = append(v.params, valExpr.GetValue())
+			} else {
+				node.Pattern.Pattern.Accept(v)
+			}
+		}
+		if node.Where != nil {
+			v.builder.WriteString(" WHERE ")
+			node.Where.Accept(v)
+		}
+	case ast.ShowWarnings, ast.ShowErrors:
+		if node.Tp == ast.ShowWarnings {
+			v.builder.WriteString("WARNINGS")
+		} else {
+			v.builder.WriteString("ERRORS")
+		}
+		if node.Limit != nil {
+			node.Limit.Accept(v)
+		}
+	default:
+		// 其他 SHOW 语句类型的处理可以在这里添加
+		v.logError(fmt.Sprintf("Unhandled ShowStmt type: %v", node.Tp))
+	}
 }
 
 // FIXME logError logs unhandled node type errors during SQL templatization
