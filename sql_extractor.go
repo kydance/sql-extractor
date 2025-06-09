@@ -1,6 +1,9 @@
 package sqlextractor
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+
 	"github.com/kydance/sql-extractor/internal/extract"
 	"github.com/kydance/sql-extractor/internal/models"
 )
@@ -14,6 +17,7 @@ type Extractor struct {
 	opType       []models.SQLOpType    // operation type: SELECT, INSERT, UPDATE, DELETE
 	params       [][]any               // parameters: where conditions, order by, limit, offset
 	tableInfos   [][]*models.TableInfo // table infos: Schema, Tablename
+	hash         []string              // hash of the templatized SQL
 }
 
 // NewExtractor creates a new Extractor. It requires a raw SQL string.
@@ -24,6 +28,7 @@ func NewExtractor(sql string) *Extractor {
 		opType:       []models.SQLOpType{},
 		params:       [][]any{},
 		tableInfos:   [][]*models.TableInfo{},
+		hash:         []string{},
 	}
 }
 
@@ -45,6 +50,30 @@ func (e *Extractor) TableInfos() [][]*models.TableInfo { return e.tableInfos }
 // OpType returns the operation type.
 func (e *Extractor) OpType() []models.SQLOpType { return e.opType }
 
+// doHash calculates the hash of the templatized SQL.
+func (e *Extractor) doHash(fn ...func([]byte) string) {
+	e.hash = make([]string, len(e.templatedSQL))
+
+	if len(fn) == 0 {
+		fn = []func([]byte) string{func(s []byte) string {
+			hash := sha256.Sum256(s)
+			return hex.EncodeToString(hash[:])
+		}}
+	}
+
+	for i := range e.templatedSQL {
+		e.hash[i] = fn[0]([]byte(e.templatedSQL[i]))
+	}
+}
+
+// TemplatizedSQLHash returns the hash of the templatized SQL.
+//
+// Default hash function is sha256.
+func (e *Extractor) TemplatizedSQLHash(fn ...func([]byte) string) []string {
+	e.doHash(fn...)
+	return e.hash
+}
+
 // Extract extracts information from the raw SQL string. It extracts the templatized
 // SQL, parameters, table information, and operation type.
 //
@@ -60,6 +89,7 @@ func (e *Extractor) Extract() (err error) {
 	if e.templatedSQL, e.tableInfos, e.params, e.opType, err = extract.NewExtractor().Extract(e.rawSQL); err != nil {
 		return err
 	}
+	e.doHash()
 
 	return nil
 }

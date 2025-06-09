@@ -1,6 +1,9 @@
 package sqlextractor
 
 import (
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -119,6 +122,58 @@ func TestExtractor_Extract_Error(t *testing.T) {
 	err = extractor.Extract()
 	as.Error(err)
 	as.Equal("empty SQL statement", err.Error())
+}
+
+func TestExtractor_TemplatizedSQLHash(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+
+	// 测试默认哈希函数(sha256)
+	sql := "SELECT * FROM users WHERE name = 'kyden'"
+	extractor := NewExtractor(sql)
+	err := extractor.Extract()
+	as.Nil(err)
+
+	// 获取默认哈希值
+	hashes := extractor.TemplatizedSQLHash()
+	as.Equal(1, len(hashes))
+
+	// 手动计算预期的哈希值
+	expectedHash := sha256.Sum256([]byte("SELECT * FROM users WHERE name eq ?"))
+	expectedHashStr := hex.EncodeToString(expectedHash[:])
+	as.Equal(expectedHashStr, hashes[0])
+
+	// 测试自定义哈希函数(md5)
+	customHashFn := func(data []byte) string {
+		hash := md5.Sum(data)
+		return hex.EncodeToString(hash[:])
+	}
+
+	customHashes := extractor.TemplatizedSQLHash(customHashFn)
+	as.Equal(1, len(customHashes))
+
+	// 手动计算预期的MD5哈希值
+	expectedMD5Hash := md5.Sum([]byte("SELECT * FROM users WHERE name eq ?"))
+	expectedMD5HashStr := hex.EncodeToString(expectedMD5Hash[:])
+	as.Equal(expectedMD5HashStr, customHashes[0])
+
+	// 测试多个SQL语句的情况
+	multiSQL := "SELECT * FROM users; INSERT INTO logs (action) VALUES ('login')"
+	extractor = NewExtractor(multiSQL)
+	err = extractor.Extract()
+	as.Nil(err)
+
+	// 应该有两个模板化SQL和两个哈希值
+	as.Equal(2, len(extractor.TemplatizedSQL()))
+	multiHashes := extractor.TemplatizedSQLHash()
+	as.Equal(2, len(multiHashes))
+
+	// 验证每个哈希值
+	for i, templatedSQL := range extractor.TemplatizedSQL() {
+		hash := sha256.Sum256([]byte(templatedSQL))
+		expectedHashStr = hex.EncodeToString(hash[:])
+		as.Equal(expectedHashStr, multiHashes[i])
+	}
 }
 
 func TestExtractor_ComplexQueries(t *testing.T) {

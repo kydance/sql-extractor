@@ -108,6 +108,7 @@ linters:
           - golines
           - lll
           - funlen
+          - gosec
 
 formatters:
   enable:
