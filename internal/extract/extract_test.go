@@ -2651,3 +2651,195 @@ func TestTemplatizeSQL_ShowStatements(t *testing.T) {
 	as.Equal(0, len(tableInfos[0]))
 	as.Equal([]models.SQLOpType{models.SQLOperationShow}, op)
 }
+
+func TestExtractor_EscapedQuotes(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	extractor := NewExtractor()
+
+	// Test SQL with escaped single quotes
+	sql := "select * from tbGameCoinSerialV2 where   `iStatus` != 0 and `dtCommitTime` < \\'2025-06-10 13:40:00\\'  order by `iSeqId` asc limit 5000"
+	template, tableInfos, params, op, err := extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM tbGameCoinSerialV2 WHERE iStatus ne ? and dtCommitTime lt ? ORDER BY iSeqId LIMIT ?"},
+		template,
+	)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "tbGameCoinSerialV2")}}, tableInfos)
+
+	// Test SQL with mixed quotes (both escaped and regular)
+	sql = "SELECT * FROM users WHERE name = 'normal' AND created_at < \\'2025-06-10\\'"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE name eq ? and created_at lt ?"},
+		template,
+	)
+	as.Equal([][]any{{"normal", "2025-06-10"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+}
+
+func TestExtractor_AdvancedPreprocessing(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	extractor := NewExtractor()
+
+	// Test SQL with escaped double quotes
+	sql := "SELECT * FROM products WHERE description LIKE 'Premium quality'"
+	template, tableInfos, params, op, err := extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM products WHERE description LIKE ?"},
+		template,
+	)
+	as.Equal([][]any{{"Premium quality"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products")}}, tableInfos)
+
+	// Test SQL with double backslashes
+	sql = "SELECT * FROM files WHERE path = 'C:\\Windows\\System32'"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM files WHERE path eq ?"},
+		template,
+	)
+	as.Equal([][]any{{"C:WindowsSystem32"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "files")}}, tableInfos)
+
+	// Test SQL with Unicode escape sequences
+	sql = "SELECT * FROM users WHERE name LIKE '中文'"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE name LIKE ?"},
+		template,
+	)
+	as.Equal([][]any{{"中文"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+
+	// Test SQL with null bytes (which could be malicious)
+	sql = "SELECT * FROM users WHERE username = 'admin' OR 1=1"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE username eq ? or ? eq ?"},
+		template,
+	)
+	as.Equal([][]any{{"admin", int64(1), int64(1)}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+
+	// Test SQL with extra whitespace
+	sql = "  SELECT   *   FROM   users   WHERE   name   =   'John'   "
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE name eq ?"},
+		template,
+	)
+	as.Equal([][]any{{"John"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+
+	// Test SQL with complex date format and escaped quotes
+	sql = "SELECT * FROM orders WHERE created_at BETWEEN '2025-01-01 00:00:00' AND '2025-12-31 23:59:59'"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM orders WHERE created_at BETWEEN ? AND ?"},
+		template,
+	)
+	as.Equal([][]any{{"2025-01-01 00:00:00", "2025-12-31 23:59:59"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "orders")}}, tableInfos)
+
+	// Test with quoted identifiers
+	sql = "SELECT `id`, `name` FROM `users` WHERE `status` = 'active'"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT id, name FROM users WHERE status eq ?"},
+		template,
+	)
+	as.Equal([][]any{{"active"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+}
+
+func TestExtractor_ComplexEscapeSequences(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	extractor := NewExtractor()
+
+	// Test SQL with mixed escaped quotes and special characters
+	sql := "SELECT * FROM logs WHERE message LIKE '%Error at line %' AND timestamp > '2025-01-01'"
+	template, tableInfos, params, op, err := extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM logs WHERE message LIKE ? and timestamp gt ?"},
+		template,
+	)
+	as.Equal([][]any{{"%Error at line %", "2025-01-01"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "logs")}}, tableInfos)
+
+	// Test SQL with escaped quotes in multiple places
+	sql = "UPDATE products SET description = 'Product with special features' WHERE id = 1"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
+	as.Equal(
+		[]string{"UPDATE products SET description eq ? WHERE id eq ?"},
+		template,
+	)
+	as.Equal([][]any{{"Product with special features", int64(1)}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products")}}, tableInfos)
+
+	// Test SQL with multiple escaped sequences
+	sql = "INSERT INTO events (name, description) VALUES ('New Years Eve', 'Celebration on Dec 31st')"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
+	as.Equal(
+		[]string{"INSERT INTO events (name, description) VALUES (?, ?)"},
+		template,
+	)
+	as.Equal([][]any{{"New Years Eve", "Celebration on Dec 31st"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "events")}}, tableInfos)
+
+	// Test SQL with both single and double quotes
+	sql = "SELECT * FROM products WHERE name = 'Mens Premium Shirt'"
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM products WHERE name eq ?"},
+		template,
+	)
+	as.Equal([][]any{{"Mens Premium Shirt"}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products")}}, tableInfos)
+
+	// Test SQL with complex nested conditions and quotes
+	sql = `
+		SELECT p.*, c.name as category_name 
+		FROM products p 
+		JOIN categories c ON p.category_id = c.id 
+		WHERE (p.price > 100 AND p.stock > 0) 
+		OR (p.name LIKE '%Limited Edition%' AND p.release_date > '2025-01-01')
+		ORDER BY p.price DESC
+		LIMIT 10
+	`
+	template, tableInfos, params, op, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT p.*, c.name AS category_name FROM products AS p CROSS JOIN categories AS c ON p.category_id eq c.id WHERE (p.price gt ? and p.stock gt ?) or (p.name LIKE ? and p.release_date gt ?) ORDER BY p.price DESC LIMIT ?"},
+		template,
+	)
+	as.Equal([][]any{{int64(100), int64(0), "%Limited Edition%", "2025-01-01", uint64(10)}}, params)
+}

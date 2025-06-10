@@ -109,6 +109,8 @@ linters:
           - lll
           - funlen
           - gosec
+          - ineffassign
+          - staticcheck
 
 formatters:
   enable:
