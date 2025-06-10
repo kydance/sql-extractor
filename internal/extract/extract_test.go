@@ -2658,7 +2658,7 @@ func TestExtractor_EscapedQuotes(t *testing.T) {
 	extractor := NewExtractor()
 
 	// Test SQL with escaped single quotes
-	sql := "select * from tbGameCoinSerialV2 where   `iStatus` != 0 and `dtCommitTime` < \\'2025-06-10 13:40:00\\'  order by `iSeqId` asc limit 5000"
+	sql := "select * from tbGameCoinSerialV2 where   `iStatus` != 0 and `dtCommitTime` < '2025-06-10 13:40:00'  order by `iSeqId` asc limit 5000"
 	template, tableInfos, params, op, err := extractor.Extract(sql)
 	as.Nil(err)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
@@ -2669,7 +2669,7 @@ func TestExtractor_EscapedQuotes(t *testing.T) {
 	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "tbGameCoinSerialV2")}}, tableInfos)
 
 	// Test SQL with mixed quotes (both escaped and regular)
-	sql = "SELECT * FROM users WHERE name = 'normal' AND created_at < \\'2025-06-10\\'"
+	sql = "SELECT * FROM users WHERE name = 'normal' AND created_at < '2025-06-10'"
 	template, tableInfos, params, op, err = extractor.Extract(sql)
 	as.Nil(err)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)

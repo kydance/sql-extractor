@@ -47,9 +47,6 @@ func (e *Extractor) Extract(sql string) (
 		return nil, nil, nil, nil, errors.New("empty SQL statement")
 	}
 
-	// Preprocess the SQL to handle escaped quotes and other special cases
-	sql = e.preprocessSQL(sql)
-
 	stmts, _, err := e.parser.Parse(sql, "", "")
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -115,122 +112,6 @@ func (e *Extractor) extractOneStmt(stmt ast.StmtNode) (
 		v.params,
 		v.opType,
 		nil
-}
-
-// preprocessSQL handles special cases in SQL strings that might cause parsing issues
-// such as escaped quotes (\'), escaped double quotes (\"), and other special characters.
-// It normalizes the SQL to ensure it can be properly parsed.
-func (e *Extractor) preprocessSQL(sql string) string {
-	if sql == "" {
-		return sql
-	}
-
-	// Handle escaped quotes more comprehensively
-	// We need to be careful with the order of replacements
-
-	// First, handle double backslashes (\\) that might be used to escape backslashes
-	// This prevents issues with other escape sequences
-	sql = strings.ReplaceAll(sql, `\\`, `\`)
-
-	// Replace escaped single quotes (\') with regular single quotes (')
-	sql = strings.ReplaceAll(sql, `\'`, `'`)
-
-	// Replace escaped double quotes (\") with regular double quotes (")
-	sql = strings.ReplaceAll(sql, `\"`, `"`)
-
-	// Handle Unicode escape sequences in strings
-	sql = strings.ReplaceAll(sql, `\u`, `u`)
-
-	// Remove any null bytes that might cause parsing issues
-	sql = strings.ReplaceAll(sql, "\x00", "")
-
-	// Handle special cases with LIKE patterns
-	// In LIKE patterns, % and _ are wildcards, and they might be escaped with \
-	sql = strings.ReplaceAll(sql, `\%`, `%`)
-	sql = strings.ReplaceAll(sql, `\_`, `_`)
-
-	// Normalize quotes for TiDB parser
-	sql = e.normalizeQuotes(sql)
-
-	// Trim any leading/trailing whitespace
-	return strings.TrimSpace(sql)
-}
-
-// normalizeQuotes handles quote normalization in a more sophisticated way
-// It converts double quotes used for string literals to single quotes,
-// handling escape sequences and nested quotes correctly.
-func (e *Extractor) normalizeQuotes(sql string) string {
-	var sb strings.Builder
-	sb.Grow(len(sql))
-
-	inSingleQuotes := false
-	inBackticks := false
-
-	runes := []rune(sql)
-
-	for i := 0; i < len(runes); i++ {
-		char := runes[i]
-
-		// An escape character, which escapes the next character.
-		// We write both and continue.
-		if char == '\\' {
-			sb.WriteRune(char)
-			if i+1 < len(runes) {
-				sb.WriteRune(runes[i+1])
-				i++
-			}
-			continue
-		}
-
-		// Entering/exiting single-quoted string
-		if char == '\'' && !inBackticks {
-			inSingleQuotes = !inSingleQuotes
-		}
-
-		// Entering/exiting backticked identifier
-		if char == '`' && !inSingleQuotes {
-			inBackticks = !inBackticks
-		}
-
-		if char == '"' && !inSingleQuotes && !inBackticks {
-			// This is a double-quoted string. Convert it to a single-quoted one.
-			sb.WriteRune('\'') // replace opening " with '
-
-			i++ // Move past the opening double quote
-			for ; i < len(runes); i++ {
-				innerChar := runes[i]
-
-				if innerChar == '\\' {
-					// An escape sequence inside the double-quoted string.
-					// Write both characters and continue.
-					sb.WriteRune(innerChar)
-					if i+1 < len(runes) {
-						sb.WriteRune(runes[i+1])
-						i++
-					}
-					continue
-				}
-
-				if innerChar == '"' {
-					// End of the double-quoted string.
-					sb.WriteRune('\'') // replace closing " with '
-					break              // Exit the inner loop
-				}
-
-				if innerChar == '\'' {
-					// A single quote inside the double-quoted string needs
-					// to be escaped for the new single-quoted string.
-					sb.WriteString(`\'`)
-				} else {
-					sb.WriteRune(innerChar)
-				}
-			}
-		} else {
-			sb.WriteRune(char)
-		}
-	}
-
-	return sb.String()
 }
 
 // ExtractVisitor 实现 ast.Visitor 接口

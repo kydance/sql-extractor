@@ -215,3 +215,18 @@ func TestExtractor_ComplexQueries(t *testing.T) {
 	as.Equal([][]any{{int64(50000), int64(5)}}, extractor.Params())
 	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "employees")}}, extractor.TableInfos())
 }
+
+func TestExtractor_0(t *testing.T) {
+	as := assert.New(t)
+	extractor := NewExtractor("")
+
+	sql := `update tbGameCoinSerialV2 set iStatus =0,sRecvErrorNo='0',sRecvErrorNo2='',sRecvErrorMsg='',sDeductInfo ='curl \'http://12.34.56.78:80/sig=WuQqM7C9Q/ZGJIBdWzABlK4Z5Tk=\' -H\'Cookie: session_id=openid;session_type=kp_actoken; -H\'Content-Type: application/x-www-form-urlencoded\' -H\'From-Service: pay.midas.dq.deduct\' -H\'From-Span: 0-4-9-2\' -H\'X-Djc-Root-Us: 1749542023913528\'',sRecv='{\"ret\":0,\"billno\":\"ABCD-20250610155344095-060226402\",\"balance\":46280,\"gen_balance\":46280,\"used_gen_amt\":20}' where sSerialNum='ABCD-20250610155344095-060226402' and sPayType = 'dq_mxxxx'`
+	extractor.SetRawSQL(sql)
+	err := extractor.Extract()
+	as.Nil(err)
+
+	as.Equal(
+		[]string{"UPDATE tbGameCoinSerialV2 SET iStatus eq ?, sRecvErrorNo eq ?, sRecvErrorNo2 eq ?, sRecvErrorMsg eq ?, sDeductInfo eq ?, sRecv eq ? WHERE sSerialNum eq ? and sPayType eq ?"},
+		extractor.TemplatizedSQL(),
+	)
+}
