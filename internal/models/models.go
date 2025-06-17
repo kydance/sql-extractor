@@ -17,27 +17,41 @@ const (
 )
 
 type TableInfo struct {
-	schema    string // database
-	tableName string // table name
-}
+	templatizedSchema    string // templated schema, e.g. db_???
+	templatizedTableName string // templated table name, e.g. tb_???
 
-// NewTableInfoWithSchemaAndName creates a new TableInfo object with a schema and a table name.
-func NewTableInfoWithSchemaAndName(schema, tableName string) *TableInfo {
-	return &TableInfo{
-		schema:    schema,
-		tableName: tableName,
-	}
+	schema    string // original schema, e.g. db_23
+	tableName string // original table name, e.g. tb_10
 }
 
 // NewTableInfo creates a new TableInfo object.
-// args should be 0 or 2, and the first half are schemas, the second half are table names.
+// args should be 0 or 2 or 4
+//
+//   - 0: no arguments, returns an empty TableInfo.
+//
+//   - 2: the first is schema, the second is table name.
+//
+//   - 4: the first is schema, the second is table name,
+//     the third is templatized schema, and the fourth is templatized table name.
 func NewTableInfo(args ...string) *TableInfo {
 	if len(args) == 0 {
 		return &TableInfo{}
 	}
 
 	if len(args) == 2 {
-		return NewTableInfoWithSchemaAndName(args[0], args[1])
+		return &TableInfo{
+			schema:    args[0],
+			tableName: args[1],
+		}
+	}
+
+	if len(args) == 4 {
+		return &TableInfo{
+			schema:               args[0],
+			tableName:            args[1],
+			templatizedSchema:    args[2],
+			templatizedTableName: args[3],
+		}
 	}
 
 	panic(
@@ -62,3 +76,14 @@ func (t *TableInfo) SetTableName(tableName string) { t.tableName = tableName }
 func (t *TableInfo) TableName() string             { return t.tableName }
 func (t *TableInfo) SetSchema(schema string)       { t.schema = schema }
 func (t *TableInfo) Schema() string                { return t.schema }
+
+func (t *TableInfo) TemplatizedTableNameWithSchema() (string, bool) {
+	if t.templatizedSchema != "" {
+		return t.templatizedSchema + "." + t.templatizedTableName, true
+	}
+	return t.templatizedTableName, false
+}
+func (t *TableInfo) SetTemplatizedTableName(tableName string) { t.templatizedTableName = tableName }
+func (t *TableInfo) TemplatizedTableName() string             { return t.templatizedTableName }
+func (t *TableInfo) SetTemplatizedSchema(schema string)       { t.templatizedSchema = schema }
+func (t *TableInfo) TemplatizedSchema() string                { return t.templatizedSchema }

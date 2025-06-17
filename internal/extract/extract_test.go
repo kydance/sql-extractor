@@ -19,6 +19,7 @@ func TestTemplatizeSQL_empty(t *testing.T) {
 	as.Equal(0, len(params))
 	as.Equal(0, len(tableInfos))
 	as.Equal([]models.SQLOpType(nil), op)
+	as.Equal([][]*models.TableInfo(nil), tableInfos)
 }
 
 func TestTemplatizeSQL_Wildcard(t *testing.T) {
@@ -32,7 +33,7 @@ func TestTemplatizeSQL_Wildcard(t *testing.T) {
 	as.Equal(nil, err)
 	as.Equal([]string{"SELECT * FROM users"}, template)
 	as.Equal(1, len(params))
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
 	// u.*
@@ -42,7 +43,7 @@ func TestTemplatizeSQL_Wildcard(t *testing.T) {
 	as.Equal([]string{"SELECT u.* FROM users AS u WHERE name eq ?"}, template)
 	as.Equal(1, len(params))
 	as.Equal(1, len(tableInfos))
-	as.Equal([]*models.TableInfo{models.NewTableInfo("", "users")}, tableInfos[0])
+	as.Equal([]*models.TableInfo{models.NewTableInfo("", "users", "", "users")}, tableInfos[0])
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
 	// schema
@@ -53,8 +54,8 @@ func TestTemplatizeSQL_Wildcard(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(tableInfos[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("sales", "orders"),
-		models.NewTableInfo("", "customers"),
+		models.NewTableInfo("sales", "orders", "sales", "orders"),
+		models.NewTableInfo("", "customers", "", "customers"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -74,7 +75,7 @@ func TestTemplatizeSQL_eq_gt_ge_lt_le(t *testing.T) {
 	)
 	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -88,7 +89,7 @@ func TestTemplatizeSQL_eq_gt_ge_lt_le(t *testing.T) {
 	)
 	as.Equal(5, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -102,7 +103,7 @@ func TestTemplatizeSQL_eq_gt_ge_lt_le(t *testing.T) {
 	)
 	as.Equal(3, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "tbGMallCfmH5UserDayLottery"),
+		models.NewTableInfo("", "tbGMallCfmH5UserDayLottery", "", "tbGMallCfmH5UserDayLottery"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -122,7 +123,7 @@ func TestTemplatizeSQL_between_and(t *testing.T) {
 	)
 	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -136,7 +137,7 @@ func TestTemplatizeSQL_between_and(t *testing.T) {
 	)
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -156,7 +157,7 @@ func TestTemplatizeSQL_in(t *testing.T) {
 	)
 	as.Equal(10, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -170,7 +171,7 @@ func TestTemplatizeSQL_in(t *testing.T) {
 	)
 	as.Equal(3, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -184,7 +185,7 @@ func TestTemplatizeSQL_in(t *testing.T) {
 	)
 	as.Equal(9, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -198,7 +199,7 @@ func TestTemplatizeSQL_in(t *testing.T) {
 	)
 	as.Equal(3, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -218,7 +219,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -232,7 +233,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -246,7 +247,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -260,7 +261,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -274,7 +275,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -288,7 +289,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -302,7 +303,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	)
 	as.Equal(5, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -322,7 +323,7 @@ func TestTemplatizeSQL_GroupBy(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -336,7 +337,7 @@ func TestTemplatizeSQL_GroupBy(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -349,7 +350,7 @@ func TestTemplatizeSQL_GroupBy(t *testing.T) {
 	)
 	as.Equal(4, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -369,7 +370,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -383,7 +384,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	)
 	as.Equal(6, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -397,7 +398,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -411,7 +412,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -425,7 +426,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -439,7 +440,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -458,7 +459,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -472,7 +473,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -486,7 +487,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -500,7 +501,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -514,7 +515,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -528,7 +529,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -542,7 +543,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -556,7 +557,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	)
 	as.Equal(5, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -575,7 +576,7 @@ func TestTemplatizeSQL_Limit(t *testing.T) {
 	)
 	as.Equal(12, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -589,7 +590,7 @@ func TestTemplatizeSQL_Limit(t *testing.T) {
 	)
 	as.Equal(13, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -603,7 +604,7 @@ func TestTemplatizeSQL_Limit(t *testing.T) {
 	)
 	as.Equal(13, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -623,7 +624,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	)
 	as.Equal(14, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -637,7 +638,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -651,7 +652,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	)
 	as.Equal(16, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -664,7 +665,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 		template)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -677,7 +678,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 		template)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -690,7 +691,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 		template)
 	as.Equal(13, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -708,7 +709,7 @@ HAVING AVG(salary) > 50000 AND COUNT(*) > 10`
 		template)
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "employees"),
+		models.NewTableInfo("", "employees", "", "employees"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -728,7 +729,7 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -742,9 +743,9 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "roles"),
-		models.NewTableInfo("", "ages"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "roles", "", "roles"),
+		models.NewTableInfo("", "ages", "", "ages"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -761,9 +762,9 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	)
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("schema1", "table1"),
-		models.NewTableInfo("", "table2"),
-		models.NewTableInfo("", "table3"),
+		models.NewTableInfo("schema1", "table1", "schema1", "table1"),
+		models.NewTableInfo("", "table2", "", "table2"),
+		models.NewTableInfo("", "table3", "", "table3"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -780,9 +781,9 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	)
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("schema1", "table1"),
-		models.NewTableInfo("", "table2"),
-		models.NewTableInfo("", "table3"),
+		models.NewTableInfo("schema1", "table1", "schema1", "table1"),
+		models.NewTableInfo("", "table2", "", "table2"),
+		models.NewTableInfo("", "table3", "", "table3"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -796,8 +797,8 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "roles"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "roles", "", "roles"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -812,9 +813,9 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	)
 	as.Equal(10, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("schema1", "table1"),
-		models.NewTableInfo("", "table2"),
-		models.NewTableInfo("", "table3"),
+		models.NewTableInfo("schema1", "table1", "schema1", "table1"),
+		models.NewTableInfo("", "table2", "", "table2"),
+		models.NewTableInfo("", "table3", "", "table3"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -834,7 +835,7 @@ func TestTemplatizeSQL_SELECT_DISTINCT(t *testing.T) {
 	)
 	as.Equal(11, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -853,7 +854,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	)
 	as.Equal(6, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -866,7 +867,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 		template)
 	as.Equal(6, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -880,7 +881,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	)
 	as.Equal(12, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -894,7 +895,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -908,7 +909,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	)
 	as.Equal(6, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -922,7 +923,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -936,7 +937,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -949,7 +950,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 		template)
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}},
 		tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
@@ -968,7 +969,7 @@ ON DUPLICATE KEY UPDATE
 	)
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 }
@@ -989,7 +990,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1005,7 +1006,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(6, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1019,7 +1020,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(8, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1033,7 +1034,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1047,7 +1048,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(8, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1061,7 +1062,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(8, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1075,7 +1076,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1089,7 +1090,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1103,7 +1104,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1117,7 +1118,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1131,7 +1132,7 @@ func TestTemplatizeSQL_Update(t *testing.T) {
 	)
 	as.Equal(4, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 }
@@ -1151,7 +1152,7 @@ func TestTemplatizeSQL_ComplexUpdate(t *testing.T) {
 	as.Equal(6, len(params[0]))
 	as.Equal(
 		[][]*models.TableInfo{{
-			models.NewTableInfo("", "users"),
+			models.NewTableInfo("", "users", "", "users"),
 		}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1165,7 +1166,7 @@ func TestTemplatizeSQL_ComplexUpdate(t *testing.T) {
 	)
 	as.Equal(4, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 }
@@ -1184,7 +1185,7 @@ func TestTemplatizeSQL_case_when(t *testing.T) {
 		template)
 	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1197,7 +1198,7 @@ func TestTemplatizeSQL_case_when(t *testing.T) {
 		template)
 	as.Equal(6, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 }
@@ -1215,7 +1216,7 @@ func TestTemplatizeSQL_Delete(t *testing.T) {
 		template)
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 
@@ -1228,7 +1229,7 @@ func TestTemplatizeSQL_Delete(t *testing.T) {
 		template)
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 
@@ -1242,9 +1243,9 @@ func TestTemplatizeSQL_Delete(t *testing.T) {
 	)
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "u"),
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "roles"),
+		models.NewTableInfo("", "u", "", "u"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "roles", "", "roles"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 
@@ -1257,7 +1258,7 @@ func TestTemplatizeSQL_Delete(t *testing.T) {
 		template)
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 
@@ -1270,7 +1271,7 @@ func TestTemplatizeSQL_Delete(t *testing.T) {
 		template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 
@@ -1284,8 +1285,8 @@ func TestTemplatizeSQL_Delete(t *testing.T) {
 	)
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "roles"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "roles", "", "roles"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 
@@ -1299,10 +1300,10 @@ func TestTemplatizeSQL_Delete(t *testing.T) {
 	)
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "u"),
-		models.NewTableInfo("", "r"),
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "roles"),
+		models.NewTableInfo("", "u", "", "u"),
+		models.NewTableInfo("", "r", "", "r"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "roles", "", "roles"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 
@@ -1316,9 +1317,9 @@ func TestTemplatizeSQL_Delete(t *testing.T) {
 	)
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "u"),
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "roles"),
+		models.NewTableInfo("", "u", "", "u"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "roles", "", "roles"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 }
@@ -1337,7 +1338,7 @@ func TestTemplatizeSQL_complex(t *testing.T) {
 		template)
 	as.Equal(10, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "tb6"),
+		models.NewTableInfo("", "tb6", "", "tb6"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 }
@@ -1369,9 +1370,9 @@ func TestTemplatizeSQL_MultipleStatements(t *testing.T) {
 	as.Equal("Alice", params[2][0])
 	as.Equal(int64(25), params[2][1])
 	as.Equal([][]*models.TableInfo{
-		{models.NewTableInfo("", "users")},
-		{models.NewTableInfo("", "users")},
-		{models.NewTableInfo("", "users")},
+		{models.NewTableInfo("", "users", "", "users")},
+		{models.NewTableInfo("", "users", "", "users")},
+		{models.NewTableInfo("", "users", "", "users")},
 	}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert, models.SQLOperationUpdate, models.SQLOperationDelete}, op)
 
@@ -1396,8 +1397,8 @@ func TestTemplatizeSQL_MultipleStatements(t *testing.T) {
 	as.Equal(10, len(params[0]))
 	as.Equal(10, len(params[1]))
 	as.Equal([][]*models.TableInfo{
-		{models.NewTableInfo("", "tbTradiQueueRT_?")},
-		{models.NewTableInfo("", "tbTradiQueueUK")},
+		{models.NewTableInfo("", "tbTradiQueueRT_6", "", "tbTradiQueueRT_?")},
+		{models.NewTableInfo("", "tbTradiQueueUK", "", "tbTradiQueueUK")},
 	}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert, models.SQLOperationInsert}, op)
 }
@@ -1417,7 +1418,7 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1431,7 +1432,7 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(3, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1445,7 +1446,7 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(5, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1459,8 +1460,8 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "roles"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "roles", "", "roles"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1474,7 +1475,7 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1488,7 +1489,7 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(4, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1502,7 +1503,7 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1516,7 +1517,7 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -1537,7 +1538,7 @@ func TestTemplatizeSQL_FuncCall(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1552,7 +1553,7 @@ func TestTemplatizeSQL_FuncCall(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(6, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1567,7 +1568,7 @@ func TestTemplatizeSQL_FuncCall(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "products"),
+		models.NewTableInfo("", "products", "", "products"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1582,7 +1583,7 @@ func TestTemplatizeSQL_FuncCall(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1597,7 +1598,7 @@ func TestTemplatizeSQL_FuncCall(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(3, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1612,7 +1613,7 @@ func TestTemplatizeSQL_FuncCall(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(3, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -1633,7 +1634,7 @@ func TestTemplatizeSQL_UnaryOperation(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1648,7 +1649,7 @@ func TestTemplatizeSQL_UnaryOperation(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1663,7 +1664,7 @@ func TestTemplatizeSQL_UnaryOperation(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -1684,7 +1685,7 @@ func TestTemplatizeSQL_IsNull(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1699,7 +1700,7 @@ func TestTemplatizeSQL_IsNull(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1714,7 +1715,7 @@ func TestTemplatizeSQL_IsNull(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -1735,8 +1736,8 @@ func TestTemplatizeSQL_Exists(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1751,8 +1752,8 @@ func TestTemplatizeSQL_Exists(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1767,8 +1768,8 @@ func TestTemplatizeSQL_Exists(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(3, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -1790,7 +1791,7 @@ func TestTemplatizeSQL_Default(t *testing.T) {
 	as.Equal(1, len(params[0]))
 	as.Equal("Alice", params[0][0])
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -1805,7 +1806,7 @@ func TestTemplatizeSQL_Default(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(0, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -1821,7 +1822,7 @@ func TestTemplatizeSQL_Default(t *testing.T) {
 	as.Equal("Alice", params[0][0])
 	as.Equal(int64(25), params[0][1])
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -1837,7 +1838,7 @@ func TestTemplatizeSQL_Default(t *testing.T) {
 	as.Equal(1, len(params[0]))
 	as.Equal(int64(26), params[0][0])
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 }
@@ -1857,7 +1858,7 @@ func TestTemplatizeSQL_TimeUnit(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1871,7 +1872,7 @@ func TestTemplatizeSQL_TimeUnit(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "events"),
+		models.NewTableInfo("", "events", "", "events"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1885,7 +1886,7 @@ func TestTemplatizeSQL_TimeUnit(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "logs"),
+		models.NewTableInfo("", "logs", "", "logs"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1899,7 +1900,7 @@ func TestTemplatizeSQL_TimeUnit(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "tasks"),
+		models.NewTableInfo("", "tasks", "", "tasks"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -1913,7 +1914,7 @@ func TestTemplatizeSQL_TimeUnit(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "projects"),
+		models.NewTableInfo("", "projects", "", "projects"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1927,7 +1928,7 @@ func TestTemplatizeSQL_TimeUnit(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "events"),
+		models.NewTableInfo("", "events", "", "events"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -1941,7 +1942,7 @@ func TestTemplatizeSQL_TimeUnit(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "employees"),
+		models.NewTableInfo("", "employees", "", "employees"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -1961,7 +1962,7 @@ func TestTemplatizeSQL_Explain(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationExplain}, op)
 
@@ -1975,7 +1976,7 @@ func TestTemplatizeSQL_Explain(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationExplain}, op)
 
@@ -1989,7 +1990,7 @@ func TestTemplatizeSQL_Explain(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(3, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationExplain}, op)
 
@@ -2003,8 +2004,8 @@ func TestTemplatizeSQL_Explain(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationExplain}, op)
 }
@@ -2047,8 +2048,8 @@ func TestTemplatizeSQL_CrossJoin(t *testing.T) {
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -2061,8 +2062,8 @@ func TestTemplatizeSQL_CrossJoin(t *testing.T) {
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -2080,8 +2081,8 @@ func TestTemplatizeSQL_RightJoin(t *testing.T) {
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -2100,7 +2101,7 @@ func TestTemplatizeSQL_UnaryOperations(t *testing.T) {
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -2113,7 +2114,7 @@ func TestTemplatizeSQL_UnaryOperations(t *testing.T) {
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -2156,8 +2157,8 @@ func TestTemplatizeSQL_SubqueryCompare(t *testing.T) {
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
-		models.NewTableInfo("", "managers"),
+		models.NewTableInfo("", "users", "", "users"),
+		models.NewTableInfo("", "managers", "", "managers"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -2170,8 +2171,8 @@ func TestTemplatizeSQL_SubqueryCompare(t *testing.T) {
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "employees"),
-		models.NewTableInfo("", "interns"),
+		models.NewTableInfo("", "employees", "", "employees"),
+		models.NewTableInfo("", "interns", "", "interns"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -2190,7 +2191,7 @@ func TestTemplatizeSQL_NestedFunctions(t *testing.T) {
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -2204,7 +2205,7 @@ func TestTemplatizeSQL_NestedFunctions(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "users"),
+		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -2224,7 +2225,7 @@ func TestTemplatizeSQL_ComplexConditions(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(6, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "products"),
+		models.NewTableInfo("", "products", "", "products"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -2238,8 +2239,8 @@ func TestTemplatizeSQL_ComplexConditions(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
-		models.NewTableInfo("", "vip_customers"),
+		models.NewTableInfo("", "orders", "", "orders"),
+		models.NewTableInfo("", "vip_customers", "", "vip_customers"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -2259,7 +2260,7 @@ func TestTemplatizeSQL_TimeUnitExpr(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 }
@@ -2286,7 +2287,7 @@ func TestTemplatizeSQL_EmptySpace(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 
@@ -2300,7 +2301,7 @@ func TestTemplatizeSQL_EmptySpace(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert}, op)
 
@@ -2314,7 +2315,7 @@ func TestTemplatizeSQL_EmptySpace(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(2, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationUpdate}, op)
 
@@ -2328,7 +2329,7 @@ func TestTemplatizeSQL_EmptySpace(t *testing.T) {
 	as.Equal(1, len(params))
 	as.Equal(1, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
-		models.NewTableInfo("", "orders"),
+		models.NewTableInfo("", "orders", "", "orders"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationDelete}, op)
 }
@@ -2666,7 +2667,7 @@ func TestExtractor_EscapedQuotes(t *testing.T) {
 		[]string{"SELECT * FROM tbGameCoinSerialV2 WHERE iStatus ne ? and dtCommitTime lt ? ORDER BY iSeqId LIMIT ?"},
 		template,
 	)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "tbGameCoinSerialV2")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "tbGameCoinSerialV2", "", "tbGameCoinSerialV2")}}, tableInfos)
 
 	// Test SQL with mixed quotes (both escaped and regular)
 	sql = "SELECT * FROM users WHERE name = 'normal' AND created_at < '2025-06-10'"
@@ -2678,7 +2679,7 @@ func TestExtractor_EscapedQuotes(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"normal", "2025-06-10"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, tableInfos)
 }
 
 func TestExtractor_AdvancedPreprocessing(t *testing.T) {
@@ -2696,7 +2697,7 @@ func TestExtractor_AdvancedPreprocessing(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"Premium quality"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products", "", "products")}}, tableInfos)
 
 	// Test SQL with double backslashes
 	sql = "SELECT * FROM files WHERE path = 'C:\\Windows\\System32'"
@@ -2708,7 +2709,7 @@ func TestExtractor_AdvancedPreprocessing(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"C:WindowsSystem32"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "files")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "files", "", "files")}}, tableInfos)
 
 	// Test SQL with Unicode escape sequences
 	sql = "SELECT * FROM users WHERE name LIKE '中文'"
@@ -2720,7 +2721,7 @@ func TestExtractor_AdvancedPreprocessing(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"中文"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, tableInfos)
 
 	// Test SQL with null bytes (which could be malicious)
 	sql = "SELECT * FROM users WHERE username = 'admin' OR 1=1"
@@ -2732,7 +2733,7 @@ func TestExtractor_AdvancedPreprocessing(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"admin", int64(1), int64(1)}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, tableInfos)
 
 	// Test SQL with extra whitespace
 	sql = "  SELECT   *   FROM   users   WHERE   name   =   'John'   "
@@ -2744,7 +2745,7 @@ func TestExtractor_AdvancedPreprocessing(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"John"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, tableInfos)
 
 	// Test SQL with complex date format and escaped quotes
 	sql = "SELECT * FROM orders WHERE created_at BETWEEN '2025-01-01 00:00:00' AND '2025-12-31 23:59:59'"
@@ -2756,7 +2757,7 @@ func TestExtractor_AdvancedPreprocessing(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"2025-01-01 00:00:00", "2025-12-31 23:59:59"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "orders")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "orders", "", "orders")}}, tableInfos)
 
 	// Test with quoted identifiers
 	sql = "SELECT `id`, `name` FROM `users` WHERE `status` = 'active'"
@@ -2768,7 +2769,7 @@ func TestExtractor_AdvancedPreprocessing(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"active"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, tableInfos)
 }
 
 func TestExtractor_ComplexEscapeSequences(t *testing.T) {
@@ -2786,7 +2787,7 @@ func TestExtractor_ComplexEscapeSequences(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"%Error at line %", "2025-01-01"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "logs")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "logs", "", "logs")}}, tableInfos)
 
 	// Test SQL with escaped quotes in multiple places
 	sql = "UPDATE products SET description = 'Product with special features' WHERE id = 1"
@@ -2798,7 +2799,7 @@ func TestExtractor_ComplexEscapeSequences(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"Product with special features", int64(1)}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products", "", "products")}}, tableInfos)
 
 	// Test SQL with multiple escaped sequences
 	sql = "INSERT INTO events (name, description) VALUES ('New Years Eve', 'Celebration on Dec 31st')"
@@ -2810,7 +2811,7 @@ func TestExtractor_ComplexEscapeSequences(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"New Years Eve", "Celebration on Dec 31st"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "events")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "events", "", "events")}}, tableInfos)
 
 	// Test SQL with both single and double quotes
 	sql = "SELECT * FROM products WHERE name = 'Mens Premium Shirt'"
@@ -2822,7 +2823,7 @@ func TestExtractor_ComplexEscapeSequences(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{"Mens Premium Shirt"}}, params)
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products")}}, tableInfos)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "products", "", "products")}}, tableInfos)
 
 	// Test SQL with complex nested conditions and quotes
 	sql = `

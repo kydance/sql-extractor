@@ -565,16 +565,18 @@ func (v *ExtractVisitor) handleTableName(node *ast.TableName) {
 	v.tableInfos = append(v.tableInfos, models.NewTableInfo())
 
 	if node.Schema.O != "" {
-		schema := v.templateTable(node.Schema.O)
-		v.builder.WriteString(schema)
+		TemplizedSchema := v.templateTable(node.Schema.O)
+		v.builder.WriteString(TemplizedSchema)
 		v.builder.WriteString(".")
 
-		v.tableInfos[len(v.tableInfos)-1].SetSchema(schema)
+		v.tableInfos[len(v.tableInfos)-1].SetSchema(node.Schema.O)
+		v.tableInfos[len(v.tableInfos)-1].SetTemplatizedSchema(TemplizedSchema)
 	}
 
-	table := v.templateTable(node.Name.O)
-	v.builder.WriteString(table)
-	v.tableInfos[len(v.tableInfos)-1].SetTableName(table)
+	TemplatizedTable := v.templateTable(node.Name.O)
+	v.builder.WriteString(TemplatizedTable)
+	v.tableInfos[len(v.tableInfos)-1].SetTableName(node.Name.O)
+	v.tableInfos[len(v.tableInfos)-1].SetTemplatizedTableName(TemplatizedTable)
 }
 
 // templateTable 模板化 table
