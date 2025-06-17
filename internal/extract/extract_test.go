@@ -1388,7 +1388,7 @@ func TestTemplatizeSQL_MultipleStatements(t *testing.T) {
 	as.Equal(nil, err)
 	as.Equal(
 		[]string{
-			"INSERT INTO tbTradiQueueRT_6 (sKey, sBody, dtCreateTime, iAppId, sModule, iActId, sUid, sBizCode, iVersion, sAction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			"INSERT INTO tbTradiQueueRT_? (sKey, sBody, dtCreateTime, iAppId, sModule, iActId, sUid, sBizCode, iVersion, sAction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			"INSERT INTO tbTradiQueueUK (dtCreateTime, iActId, iVersion, sBody, sModule, iAppId, sAction, sBizCode, sKey, sUid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		},
 		template)
@@ -1396,7 +1396,7 @@ func TestTemplatizeSQL_MultipleStatements(t *testing.T) {
 	as.Equal(10, len(params[0]))
 	as.Equal(10, len(params[1]))
 	as.Equal([][]*models.TableInfo{
-		{models.NewTableInfo("", "tbTradiQueueRT_6")},
+		{models.NewTableInfo("", "tbTradiQueueRT_?")},
 		{models.NewTableInfo("", "tbTradiQueueUK")},
 	}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationInsert, models.SQLOperationInsert}, op)
@@ -2842,4 +2842,113 @@ func TestExtractor_ComplexEscapeSequences(t *testing.T) {
 		template,
 	)
 	as.Equal([][]any{{int64(100), int64(0), "%Limited Edition%", "2025-01-01", uint64(10)}}, params)
+}
+
+func TestTemplateTable(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	visitor := &ExtractVisitor{}
+
+	testCases := []struct {
+		name           string
+		inputSchema    string
+		inputTable     string
+		expectedSchema string
+		expectedTable  string
+	}{
+		{
+			name:           "empty schema and table",
+			inputSchema:    "",
+			inputTable:     "",
+			expectedSchema: "",
+			expectedTable:  "",
+		},
+		{
+			name:           "normal schema and table without underscore",
+			inputSchema:    "db",
+			inputTable:     "users",
+			expectedSchema: "db",
+			expectedTable:  "users",
+		},
+		{
+			name:           "schema with underscore but no number",
+			inputSchema:    "my_db",
+			inputTable:     "users",
+			expectedSchema: "my_db",
+			expectedTable:  "users",
+		},
+		{
+			name:           "table with underscore but no number",
+			inputSchema:    "db",
+			inputTable:     "user_info",
+			expectedSchema: "db",
+			expectedTable:  "user_info",
+		},
+		{
+			name:           "schema with underscore and number",
+			inputSchema:    "db_123",
+			inputTable:     "users",
+			expectedSchema: "db_???",
+			expectedTable:  "users",
+		},
+		{
+			name:           "table with underscore and number",
+			inputSchema:    "db",
+			inputTable:     "users_4",
+			expectedSchema: "db",
+			expectedTable:  "users_?",
+		},
+		{
+			name:           "both schema and table with underscore and number",
+			inputSchema:    "db_123",
+			inputTable:     "users_45",
+			expectedSchema: "db_???",
+			expectedTable:  "users_??",
+		},
+		{
+			name:           "multiple underscores in schema",
+			inputSchema:    "my_db_123",
+			inputTable:     "users",
+			expectedSchema: "my_db_???",
+			expectedTable:  "users",
+		},
+		{
+			name:           "multiple underscores in table",
+			inputSchema:    "db",
+			inputTable:     "user_info_789",
+			expectedSchema: "db",
+			expectedTable:  "user_info_???",
+		},
+		{
+			name:           "multiple underscores in both",
+			inputSchema:    "my_db_123",
+			inputTable:     "user_info_789",
+			expectedSchema: "my_db_???",
+			expectedTable:  "user_info_???",
+		},
+		{
+			name:           "underscore with non-numeric suffix",
+			inputSchema:    "db_test",
+			inputTable:     "users_prod",
+			expectedSchema: "db_test",
+			expectedTable:  "users_prod",
+		},
+		{
+			name:           "complex sharding pattern",
+			inputSchema:    "db_shard_001",
+			inputTable:     "users_region_002",
+			expectedSchema: "db_shard_???",
+			expectedTable:  "users_region_???",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(_ *testing.T) {
+			table := visitor.templateTable(tc.inputTable)
+			as.Equal(tc.expectedTable, table)
+
+			schema := visitor.templateTable(tc.inputSchema)
+			as.Equal(tc.expectedSchema, schema)
+		})
+	}
 }

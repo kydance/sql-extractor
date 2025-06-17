@@ -3,6 +3,7 @@ package extract
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -14,7 +15,10 @@ import (
 	"github.com/kydance/sql-extractor/internal/models"
 )
 
-const paramsMaxCount = 64
+const (
+	paramsMaxCount   = 64
+	tablePlaceholder = "?"
+)
 
 type Extractor struct {
 	parser *parser.Parser
@@ -561,14 +565,35 @@ func (v *ExtractVisitor) handleTableName(node *ast.TableName) {
 	v.tableInfos = append(v.tableInfos, models.NewTableInfo())
 
 	if node.Schema.O != "" {
-		v.builder.WriteString(node.Schema.O)
+		schema := v.templateTable(node.Schema.O)
+		v.builder.WriteString(schema)
 		v.builder.WriteString(".")
 
-		v.tableInfos[len(v.tableInfos)-1].SetSchema(node.Schema.O)
+		v.tableInfos[len(v.tableInfos)-1].SetSchema(schema)
 	}
 
-	v.builder.WriteString(node.Name.O)
-	v.tableInfos[len(v.tableInfos)-1].SetTableName(node.Name.O)
+	table := v.templateTable(node.Name.O)
+	v.builder.WriteString(table)
+	v.tableInfos[len(v.tableInfos)-1].SetTableName(table)
+}
+
+// templateTable 模板化 table
+//
+// - 如果 table 中包含 _ 且最后一个部分是数字，则认为是分库分表的表名，将最后一个部分替换为若干个 x
+// - 如果 table 中不包含 _ 或最后一个部分不是数字，则返回原值
+func (v *ExtractVisitor) templateTable(table string) string {
+	if table == "" || !strings.Contains(table, "_") {
+		return table
+	}
+
+	parts := strings.Split(table, "_")
+	if _, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
+		return strings.Join(parts[0:len(parts)-1], "_") +
+			"_" +
+			strings.Repeat(tablePlaceholder, len(parts[len(parts)-1]))
+	}
+
+	return table
 }
 
 func (v *ExtractVisitor) handleJoin(node *ast.Join) {
