@@ -17,8 +17,8 @@ const (
 )
 
 type TableInfo struct {
-	templatizedSchema    string // templated schema, e.g. db_???
-	templatizedTableName string // templated table name, e.g. tb_???
+	templatizedSchema    string // templated schema, e.g. db_?
+	templatizedTableName string // templated table name, e.g. tb_?
 
 	schema    string // original schema, e.g. db_23
 	tableName string // original table name, e.g. tb_10

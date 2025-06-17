@@ -590,9 +590,7 @@ func (v *ExtractVisitor) templateTable(table string) string {
 
 	parts := strings.Split(table, "_")
 	if _, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
-		return strings.Join(parts[0:len(parts)-1], "_") +
-			"_" +
-			strings.Repeat(tablePlaceholder, len(parts[len(parts)-1]))
+		return strings.Join(parts[0:len(parts)-1], "_") + "_" + tablePlaceholder
 	}
 
 	return table

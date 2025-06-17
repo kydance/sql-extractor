@@ -10,7 +10,7 @@ sql-extractor 是一个高性能的 SQL 解析和转换工具，它可以将 SQL
 - 支持多种 SQL 操作类型：SELECT、INSERT、UPDATE、DELETE、SHOW CREATE TABLE、SHOW CREATE DATABASE、SHOW DATABASES、SHOW TABLES、SHOW COLUMNS、SHOW INDEX、SHOW STATUS、SHOW VARIABLES、SHOW PROCESSLIST、SHOW TABLE STATUS、SHOW WARNINGS、SHOW ERRORS
 - SQL 语句参数化：将字面值转换为占位符(`?`)
 - 表信息提取：捕获查询中使用的 schema 和表名
-  - 分库分表支持：支持分库分表的表名提取和模板化，例如 `db_1`.`tb_23` 会被转换为 `db_???`.`tb_??`
+  - 分库分表支持：支持分库分表的表名提取和模板化，例如 `db_1`.`tb_23` 会被转换为 `db_?`.`tb_?`
 - 参数提取：按出现顺序收集 SQL 中的字面值
 - 多语句支持：可以处理以分号分隔的多个 SQL 语句
 - 线程安全：使用 sync.Pool 进行并发处理

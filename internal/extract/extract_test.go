@@ -2889,7 +2889,7 @@ func TestTemplateTable(t *testing.T) {
 			name:           "schema with underscore and number",
 			inputSchema:    "db_123",
 			inputTable:     "users",
-			expectedSchema: "db_???",
+			expectedSchema: "db_?",
 			expectedTable:  "users",
 		},
 		{
@@ -2903,14 +2903,14 @@ func TestTemplateTable(t *testing.T) {
 			name:           "both schema and table with underscore and number",
 			inputSchema:    "db_123",
 			inputTable:     "users_45",
-			expectedSchema: "db_???",
-			expectedTable:  "users_??",
+			expectedSchema: "db_?",
+			expectedTable:  "users_?",
 		},
 		{
 			name:           "multiple underscores in schema",
 			inputSchema:    "my_db_123",
 			inputTable:     "users",
-			expectedSchema: "my_db_???",
+			expectedSchema: "my_db_?",
 			expectedTable:  "users",
 		},
 		{
@@ -2918,14 +2918,14 @@ func TestTemplateTable(t *testing.T) {
 			inputSchema:    "db",
 			inputTable:     "user_info_789",
 			expectedSchema: "db",
-			expectedTable:  "user_info_???",
+			expectedTable:  "user_info_?",
 		},
 		{
 			name:           "multiple underscores in both",
 			inputSchema:    "my_db_123",
 			inputTable:     "user_info_789",
-			expectedSchema: "my_db_???",
-			expectedTable:  "user_info_???",
+			expectedSchema: "my_db_?",
+			expectedTable:  "user_info_?",
 		},
 		{
 			name:           "underscore with non-numeric suffix",
@@ -2938,8 +2938,8 @@ func TestTemplateTable(t *testing.T) {
 			name:           "complex sharding pattern",
 			inputSchema:    "db_shard_001",
 			inputTable:     "users_region_002",
-			expectedSchema: "db_shard_???",
-			expectedTable:  "users_region_???",
+			expectedSchema: "db_shard_?",
+			expectedTable:  "users_region_?",
 		},
 	}
 
